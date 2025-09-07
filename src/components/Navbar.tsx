@@ -19,11 +19,11 @@ export default function Navbar({ transparent = false }: NavbarProps) {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
               <Layers className="h-8 w-8 text-indigo-600" />
-              <span className={`text-xl font-bold ${
-                transparent ? 'text-white' : 'text-gray-900'
-              }`}>
-                SlideFlow
-              </span>
+              <img 
+                src="https://storage.googleapis.com/msgsndr/QFjnAi2H2A9Cpxi7l0ri/media/68bdde997b3d2f00448d506d.png" 
+                alt="SlideFlow" 
+                className="h-8 w-auto"
+              />
             </Link>
           </div>
 
