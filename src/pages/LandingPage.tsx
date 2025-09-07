@@ -231,7 +231,7 @@ export default function LandingPage() {
               />
             </div>
             <p className="text-gray-400">
-              © 2024 SlideFlow. All rights reserved. Made for creators, by creators.
+              © 2025 SlideFlow. All rights reserved. Made for creators, by creators.
             </p>
           </div>
         </div>
