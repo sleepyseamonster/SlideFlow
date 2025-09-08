@@ -39,7 +39,7 @@ export default function Dashboard() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <div className="flex items-center">
                 <div className="p-2 bg-indigo-100 rounded-lg">
@@ -60,6 +60,18 @@ export default function Dashboard() {
                 <div className="ml-4">
                   <p className="text-sm text-gray-600">This Month</p>
                   <p className="text-2xl font-bold text-gray-900">{carousels.length}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <div className="flex items-center">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Clock className="h-6 w-6 text-orange-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-600">Time Saved</p>
+                  <p className="text-2xl font-bold text-gray-900">{timeSavedHours}h</p>
                 </div>
               </div>
             </div>
