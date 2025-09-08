@@ -10,7 +10,8 @@ import {
   Download, 
   CalendarCheck2,
   TrendingUp,
-  Star
+  Star,
+  Clock
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -19,6 +20,8 @@ export default function Dashboard() {
 
   const canGenerate = user && user.carouselsGenerated < user.maxCarousels;
 
+  // Calculate time saved (assuming each carousel saves ~2.5 hours of manual work)
+  const timeSavedHours = user ? Math.round(user.carouselsGenerated * 2.5 * 10) / 10 : 0;
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
