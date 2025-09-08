@@ -11,7 +11,8 @@ import {
   Check,
   Star,
   Users,
-  Zap
+  Zap,
+  Instagram
 } from 'lucide-react';
 
 export default function LandingPage() {
@@ -61,6 +62,7 @@ export default function LandingPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
             Create Instagram
+            <Instagram className="inline-block ml-4 h-12 w-12 md:h-16 md:w-16 text-white" />
             <br />
             <span className="relative bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent overflow-hidden">
               <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></span>
