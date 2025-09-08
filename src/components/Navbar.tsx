@@ -12,7 +12,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
 
   return (
     <nav className={`fixed w-full z-50 transition-all duration-300 ${
-      transparent ? 'bg-transparent' : 'bg-white/95 backdrop-blur-sm shadow-sm'
+      transparent ? 'bg-transparent' : 'bg-gradient-to-r from-indigo-900 to-purple-800 backdrop-blur-sm shadow-lg'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
@@ -34,14 +34,14 @@ export default function Navbar({ transparent = false }: NavbarProps) {
                   className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     transparent 
                       ? 'text-white hover:text-gray-200' 
-                      : 'text-gray-700 hover:text-gray-900'
+                      : 'text-white hover:text-gray-200'
                   }`}
                 >
                   Dashboard
                 </Link>
                 <div className="relative group">
                   <button className={`flex items-center space-x-1 p-2 rounded-md ${
-                    transparent ? 'text-white hover:bg-white/10' : 'text-gray-700 hover:bg-gray-100'
+                    transparent ? 'text-white hover:bg-white/10' : 'text-white hover:bg-white/10'
                   }`}>
                     <User className="h-5 w-5" />
                     <span className="text-sm">{user.name}</span>
@@ -70,7 +70,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
                   className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                     transparent 
                       ? 'text-white hover:text-gray-200' 
-                      : 'text-gray-700 hover:text-gray-900'
+                      : 'text-white hover:text-gray-200'
                   }`}
                 >
                   Sign In
