@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
 import { 
@@ -14,6 +15,9 @@ import {
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
+  const [editableName, setEditableName] = useState(user?.name || '');
+  const [isEditingName, setIsEditingName] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
 
   const handleUpgradeToPremium = () => {
@@ -23,6 +27,17 @@ export default function Profile() {
     updateUser({ plan: 'premium', maxCarousels: 999 });
   };
 
+  const handleUpdateName = () => {
+    if (user && editableName.trim()) {
+      updateUser({ name: editableName.trim() });
+      setIsEditingName(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditableName(user?.name || '');
+    setIsEditingName(false);
+  };
   if (!user) {
     return null;
   }
@@ -65,7 +80,7 @@ export default function Profile() {
                   Account Settings
                 </button>
                 <button 
-                  onClick={() => setShowBilling(!showBilling)}
+                  onClick={() => navigate('/billing')}
                   className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-50 rounded-lg"
                 >
                   <CreditCard className="h-5 w-5 mr-3" />
@@ -84,11 +99,40 @@ export default function Profile() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Full Name
                     </label>
-                    <input
-                      type="text"
-                      value={user.name}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={editableName}
+                        onChange={(e) => setEditableName(e.target.value)}
+                        disabled={!isEditingName}
+                        className={`flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                          !isEditingName ? 'bg-gray-50' : ''
+                        }`}
+                      />
+                      {!isEditingName ? (
+                        <button
+                          onClick={() => setIsEditingName(true)}
+                          className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                        >
+                          Edit
+                        </button>
+                      ) : (
+                        <div className="flex space-x-1">
+                          <button
+                            onClick={handleUpdateName}
+                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -168,9 +212,9 @@ export default function Profile() {
                       </ul>
                       <button
                         onClick={handleUpgradeToPremium}
-                        className="bg-white hover:bg-gray-100 text-indigo-600 px-6 py-3 rounded-xl font-semibold transition-colors"
+                        className="bg-white hover:bg-gray-100 text-indigo-600 px-6 py-3 rounded-xl font-semibold transition-colors transform hover:scale-105 hover:shadow-lg"
                       >
-                        Upgrade for $29/month
+                        Upgrade for $9/month
                       </button>
                     </div>
                     <Sparkles className="h-8 w-8 text-teal-300" />

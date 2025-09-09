@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Generator from './pages/Generator';
 import Results from './pages/Results';
 import Profile from './pages/Profile';
+import Billing from './pages/Billing';
 import { CarouselProvider } from './contexts/CarouselContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -52,6 +53,11 @@ function App() {
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              } />
+              <Route path="/billing" element={
+                <ProtectedRoute>
+                  <Billing />
                 </ProtectedRoute>
               } />
             </Routes>
