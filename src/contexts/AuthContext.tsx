@@ -2,10 +2,6 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-// Check if we're using placeholder credentials
-const isUsingPlaceholders = import.meta.env.VITE_SUPABASE_URL === 'https://placeholder.supabase.co' || 
-                           import.meta.env.VITE_SUPABASE_ANON_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDk3MjYwMDAsImV4cCI6MTk2NTA5OTYwMH0.placeholder';
-
 interface User {
   id: string;
   email: string;
@@ -39,26 +35,11 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Mock user data for placeholder mode
-const mockUser: User = {
-  id: 'mock-user-id',
-  email: 'demo@example.com',
-  name: 'Demo User',
-  plan: 'free',
-  carouselsGenerated: 0,
-  maxCarousels: 1
-};
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isUsingPlaceholders) {
-      // In placeholder mode, just set loading to false
-      setLoading(false);
-      return;
-    }
-
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -89,7 +70,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         .eq('id', supabaseUser.id)
         .single();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
         console.error('Error fetching profile:', error);
         return;
       }
@@ -103,20 +84,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
           carouselsGenerated: profile.carousels_generated,
           maxCarousels: profile.max_carousels
         });
+      } else {
+        // Create profile if it doesn't exist
+        await createUserProfile(supabaseUser);
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    if (isUsingPlaceholders) {
-      // Mock login for placeholder mode
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-      setUser({ ...mockUser, email });
-      return true;
-    }
+  const createUserProfile = async (supabaseUser: SupabaseUser) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .insert({
+          id: supabaseUser.id,
+          email: supabaseUser.email || '',
+          name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+          plan: 'free',
+          carousels_generated: 0,
+          max_carousels: 1
+        });
 
+      if (error) {
+        console.error('Error creating profile:', error);
+        return;
+      }
+
+      // Fetch the newly created profile
+      await fetchUserProfile(supabaseUser);
+    } catch (error) {
+      console.error('Error in createUserProfile:', error);
+    }
+  };
+
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -136,18 +138,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const loginWithGoogle = async (): Promise<boolean> => {
-    if (isUsingPlaceholders) {
-      // Mock Google login for placeholder mode
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setUser({ ...mockUser, name: 'Google User' });
-      return true;
-    }
-
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/dashboard'
+          redirectTo: `${window.location.origin}/dashboard`
         }
       });
 
@@ -164,13 +159,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
-    if (isUsingPlaceholders) {
-      // Mock signup for placeholder mode
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setUser({ ...mockUser, email, name });
-      return true;
-    }
-
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -195,12 +183,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const logout = async () => {
-    if (isUsingPlaceholders) {
-      // Mock logout for placeholder mode
-      setUser(null);
-      return;
-    }
-
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -214,11 +196,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const updateUser = async (updates: Partial<User>) => {
     if (!user) return;
 
-    if (isUsingPlaceholders) {
-      // Mock update for placeholder mode
-      setUser(prev => prev ? { ...prev, ...updates } : null);
-      return;
-    }
     try {
       // Convert camelCase to snake_case for database
       const dbUpdates: any = {
