@@ -9,7 +9,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resendingConfirmation, setResendingConfirmation] = useState(false);
   const [error, setError] = useState('');
+  const [showResendOption, setShowResendOption] = useState(false);
   
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
@@ -35,13 +37,18 @@ export default function LoginPage() {
       });
 
       if (authError) {
+        // Check for email not confirmed error by both message and code
+        if (authError.message === 'Email not confirmed' || authError.code === 'email_not_confirmed') {
+          setError('Please check your email and click the confirmation link before signing in.');
+          setShowResendOption(true);
+          setLoading(false);
+          return;
+        }
+
         // Handle specific Supabase error codes with user-friendly messages
         switch (authError.message) {
           case 'Invalid login credentials':
             setError('Invalid email or password. Please check your credentials and try again.');
-            break;
-          case 'Email not confirmed':
-            setError('Please check your email and click the confirmation link before signing in.');
             break;
           case 'Too many requests':
             setError('Too many login attempts. Please wait a moment before trying again.');
@@ -50,6 +57,7 @@ export default function LoginPage() {
             setError(authError.message);
         }
         setLoading(false);
+        setShowResendOption(false);
         return;
       }
 
@@ -59,6 +67,36 @@ export default function LoginPage() {
       setError('Login failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      setError('Please enter your email address first.');
+      return;
+    }
+
+    setResendingConfirmation(true);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+
+      if (error) {
+        setError(`Failed to resend confirmation: ${error.message}`);
+      } else {
+        setError(''); 
+        // Show success message
+        setError('Confirmation email sent! Please check your inbox and click the link to verify your account.');
+        setShowResendOption(false);
+      }
+    } catch (err) {
+      setError('Failed to resend confirmation email. Please try again.');
+    } finally {
+      setResendingConfirmation(false);
     }
   };
 
@@ -93,8 +131,24 @@ export default function LoginPage() {
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl">
+            <div className={`border px-4 py-3 rounded-xl ${
+              error.includes('Confirmation email sent') 
+                ? 'bg-green-50 border-green-200 text-green-600'
+                : 'bg-red-50 border-red-200 text-red-600'
+            }`}>
               {error}
+              {showResendOption && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={resendingConfirmation}
+                    className="text-sm text-indigo-600 hover:text-indigo-500 underline disabled:opacity-50"
+                  >
+                    {resendingConfirmation ? 'Sending...' : 'Resend confirmation email'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
           
