@@ -36,7 +36,7 @@ export default function SignupPage() {
         if (authError.message.includes('rate_limit')) {
           const waitTime = authError.message.match(/\d+/)?.[0] || '60';
           setError(`Too many signup attempts. Please wait ${waitTime} seconds before trying again.`);
-        } else if (authError.message.includes('already registered')) {
+        } else if (authError.message.includes('already registered') || authError.message.includes('User already registered') || (authError as any).code === 'user_already_exists') {
           setError('An account with this email already exists. Try signing in instead.');
         } else {
           setError(authError.message);
