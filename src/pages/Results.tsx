@@ -144,26 +144,27 @@ ${currentCarousel.description}
               <div className="mb-4">
                 <button
                   onClick={() => regenerateSlide(currentSlide)}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium rounded-xl transition-all hover:shadow-md"
+                  disabled={isRegenerating}
+                  className="w-full flex items-center justify-center px-4 py-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium rounded-xl transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <RefreshCw className="h-5 w-5 mr-2" />
-                  Regenerate this slide only
+                  <RefreshCw className={`h-5 w-5 mr-2 ${isRegenerating ? 'animate-spin' : ''}`} />
+                  {isRegenerating ? 'Regenerating...' : 'Regenerate this slide only'}
                 </button>
               </div>
               
               <div className="text-center mb-4">
                 <p className="text-gray-700 font-medium">
-                  {currentCarousel.slides[currentSlide]?.caption}
+                  {localCarousel.slides[currentSlide]?.caption}
                 </p>
               </div>
               
               {/* Slide Thumbnails */}
               <div className="flex space-x-2 overflow-x-auto pb-2">
-                {currentCarousel.slides.map((slide, index) => (
+                {localCarousel.slides.map((slide, index) => (
                   <button
                     key={slide.id}
                     onClick={() => setCurrentSlide(index)}
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all relative ${
                       index === currentSlide ? 'border-indigo-500' : 'border-transparent'
                     }`}
                   >
@@ -172,6 +173,11 @@ ${currentCarousel.description}
                       alt={`Slide ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
+                    {slide.regenerated && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-3 h-3">
+                        <div className="w-full h-full bg-green-400 rounded-full animate-pulse"></div>
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
