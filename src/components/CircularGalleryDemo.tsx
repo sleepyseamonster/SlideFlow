@@ -86,9 +86,14 @@ const carouselExamples: GalleryItem[] = [
 
 const CircularGalleryDemo = () => {
   return (
-    <div className="w-full h-[600px] relative">
+    <div className="w-full h-[1200px] relative">
       <div className="absolute inset-0">
-        <CircularGallery items={carouselExamples} radius={350} />
+        <div className="relative h-[600px]">
+          <CircularGallery items={carouselExamples} radius={350} autoRotateSpeed={0.02} />
+        </div>
+        <div className="relative h-[600px]">
+          <CircularGallery items={carouselExamples} radius={350} autoRotateSpeed={-0.02} />
+        </div>
       </div>
     </div>
   );
