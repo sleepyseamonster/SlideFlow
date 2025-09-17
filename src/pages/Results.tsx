@@ -140,6 +140,17 @@ ${currentCarousel.description}
                 )}
               </div>
               
+              {/* Regenerate Current Slide Button */}
+              <div className="mb-4">
+                <button
+                  onClick={() => regenerateSlide(currentSlide)}
+                  className="w-full flex items-center justify-center px-4 py-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium rounded-xl transition-all hover:shadow-md"
+                >
+                  <RefreshCw className="h-5 w-5 mr-2" />
+                  Regenerate this slide only
+                </button>
+              </div>
+              
               <div className="text-center mb-4">
                 <p className="text-gray-700 font-medium">
                   {currentCarousel.slides[currentSlide]?.caption}
@@ -149,32 +160,19 @@ ${currentCarousel.description}
               {/* Slide Thumbnails */}
               <div className="flex space-x-2 overflow-x-auto pb-2">
                 {currentCarousel.slides.map((slide, index) => (
-                  <div
+                  <button
                     key={slide.id}
-                    className="relative flex-shrink-0 group"
-                  >
-                    <button
-                      onClick={() => setCurrentSlide(index)}
-                      className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                    onClick={() => setCurrentSlide(index)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
                       index === currentSlide ? 'border-indigo-500' : 'border-transparent'
-                      }`}
-                    >
-                      <img
-                        src={slide.image}
-                        alt={`Slide ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                    
-                    {/* Regenerate button - shows on hover */}
-                    <button
-                      onClick={() => regenerateSlide(index)}
-                      className="absolute -top-1 -right-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 transform hover:scale-110 shadow-lg"
-                      title={`Regenerate slide ${index + 1} with AI`}
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                    </button>
-                  </div>
+                    }`}
+                  >
+                    <img
+                      src={slide.image}
+                      alt={`Slide ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
                 ))}
               </div>
             </div>
