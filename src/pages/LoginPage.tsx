@@ -30,11 +30,7 @@ export default function LoginPage() {
         return;
       }
 
-      // Get the latest auth error from Supabase
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const authError = await login(email, password);
 
       if (authError) {
         // Check for email not confirmed error by both message and code
@@ -104,11 +100,11 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      const success = await loginWithGoogle();
-      if (success) {
-        navigate('/dashboard');
+      const authError = await loginWithGoogle();
+      if (authError) {
+        setError(`Google login failed: ${authError.message}`);
       } else {
-        setError('Google login failed. Please try again.');
+        navigate('/dashboard');
       }
     } catch (err) {
       setError('Google login failed');
@@ -121,11 +117,11 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      const success = await loginWithFacebook();
-      if (success) {
-        navigate('/dashboard');
+      const authError = await loginWithFacebook();
+      if (authError) {
+        setError(`Facebook login failed: ${authError.message}`);
       } else {
-        setError('Facebook login failed. Please try again.');
+        navigate('/dashboard');
       }
     } catch (err) {
       setError('Facebook login failed');

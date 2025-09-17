@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { User as SupabaseUser, AuthError } from '@supabase/supabase-js';
 
 interface User {
   id: string;
@@ -13,10 +13,10 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  loginWithGoogle: () => Promise<boolean>;
-  loginWithFacebook: () => Promise<boolean>;
-  signup: (email: string, password: string, name: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<AuthError | null>;
+  loginWithGoogle: () => Promise<AuthError | null>;
+  loginWithFacebook: () => Promise<AuthError | null>;
+  signup: (email: string, password: string, name: string) => Promise<AuthError | null>;
   logout: () => Promise<void>;
   loading: boolean;
   updateUser: (updates: Partial<User>) => Promise<void>;
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<AuthError | null> => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -127,19 +127,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       if (error) {
-        console.error('Login error:', error.message);
-        // Don't throw here, let the page handle the specific error message
-        return false;
+        return error;
       }
 
-      return true;
+      return null;
     } catch (error) {
       console.error('Login error:', error);
-      return false;
+      return new Error('Unexpected login error') as AuthError;
     }
   };
 
-  const loginWithGoogle = async (): Promise<boolean> => {
+  const loginWithGoogle = async (): Promise<AuthError | null> => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -149,18 +147,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       if (error) {
-        console.error('Google login error:', error.message);
-        return false;
+        return error;
       }
 
-      return true;
+      return null;
     } catch (error) {
       console.error('Google login error:', error);
-      return false;
+      return new Error('Unexpected Google login error') as AuthError;
     }
   };
 
-  const loginWithFacebook = async (): Promise<boolean> => {
+  const loginWithFacebook = async (): Promise<AuthError | null> => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
@@ -171,18 +168,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       if (error) {
-        console.error('Facebook login error:', error.message);
-        return false;
+        return error;
       }
 
-      return true;
+      return null;
     } catch (error) {
       console.error('Facebook login error:', error);
-      return false;
+      return new Error('Unexpected Facebook login error') as AuthError;
     }
   };
 
-  const signup = async (email: string, password: string, name: string): Promise<boolean> => {
+  const signup = async (email: string, password: string, name: string): Promise<AuthError | null> => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -195,14 +191,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       if (error) {
-        console.error('Signup error:', error.message);
-        return false;
+        return error;
       }
 
-      return true;
+      return null;
     } catch (error) {
       console.error('Signup error:', error);
-      return false;
+      return new Error('Unexpected signup error') as AuthError;
     }
   };
 

@@ -29,16 +29,7 @@ export default function SignupPage() {
         return;
       }
 
-      // Handle signup directly to get better error messages
-      const { error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: name,
-          }
-        }
-      });
+      const authError = await signup(email, password, name);
 
       if (authError) {
         // Handle specific Supabase error codes with user-friendly messages
@@ -67,11 +58,11 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
     try {
-      const success = await loginWithGoogle();
-      if (success) {
-        navigate('/dashboard');
+      const authError = await loginWithGoogle();
+      if (authError) {
+        setError(`Google signup failed: ${authError.message}`);
       } else {
-        setError('Google signup failed. Please try again.');
+        navigate('/dashboard');
       }
     } catch (err) {
       setError('Google signup failed');
@@ -84,11 +75,11 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
     try {
-      const success = await loginWithFacebook();
-      if (success) {
-        navigate('/dashboard');
+      const authError = await loginWithFacebook();
+      if (authError) {
+        setError(`Facebook signup failed: ${authError.message}`);
       } else {
-        setError('Facebook signup failed. Please try again.');
+        navigate('/dashboard');
       }
     } catch (err) {
       setError('Facebook signup failed');
