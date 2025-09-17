@@ -155,13 +155,13 @@ ${currentCarousel.description}
               
               <div className="text-center mb-4">
                 <p className="text-gray-700 font-medium">
-                  {localCarousel.slides[currentSlide]?.caption}
+                  {currentCarousel.slides[currentSlide]?.caption}
                 </p>
               </div>
               
               {/* Slide Thumbnails */}
               <div className="flex space-x-2 overflow-x-auto pb-2">
-                {localCarousel.slides.map((slide, index) => (
+                {currentCarousel.slides.map((slide, index) => (
                   <button
                     key={slide.id}
                     onClick={() => setCurrentSlide(index)}
