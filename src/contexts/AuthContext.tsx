@@ -70,7 +70,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         .eq('id', supabaseUser.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      if (error) {
         console.error('Error fetching profile:', error);
         return;
       }
@@ -84,37 +84,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           carouselsGenerated: profile.carousels_generated,
           maxCarousels: profile.max_carousels
         });
-      } else {
-        // Create profile if it doesn't exist
-        await createUserProfile(supabaseUser);
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
-    }
-  };
-
-  const createUserProfile = async (supabaseUser: SupabaseUser) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .insert({
-          id: supabaseUser.id,
-          email: supabaseUser.email || '',
-          name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-          plan: 'free',
-          carousels_generated: 0,
-          max_carousels: 1
-        });
-
-      if (error) {
-        console.error('Error creating profile:', error);
-        return;
-      }
-
-      // Fetch the newly created profile
-      await fetchUserProfile(supabaseUser);
-    } catch (error) {
-      console.error('Error in createUserProfile:', error);
     }
   };
 
@@ -142,7 +114,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: window.location.origin + '/dashboard'
         }
       });
 
