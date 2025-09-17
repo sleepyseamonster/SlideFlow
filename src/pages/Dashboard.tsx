@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCarousel } from '../contexts/CarouselContext';
 import Navbar from '../components/Navbar';
@@ -17,12 +17,19 @@ import {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { carousels, deleteCarousel, duplicateCarousel } = useCarousel();
+  const { carousels, deleteCarousel, duplicateCarousel, setCurrentCarousel } = useCarousel();
+  const navigate = useNavigate();
 
   const canGenerate = user && user.carouselsGenerated < user.maxCarousels;
 
   // Calculate time saved (assuming each carousel saves ~2.5 hours of manual work)
   const timeSavedHours = user ? Math.round(user.carouselsGenerated * 2.5 * 10) / 10 : 0;
+
+  const handleCarouselClick = (carousel: any) => {
+    setCurrentCarousel(carousel);
+    navigate('/results');
+  };
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -125,7 +132,10 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {carousels.map((carousel) => (
               <div key={carousel.id} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 relative">
+                <div 
+                  className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 relative cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => handleCarouselClick(carousel)}
+                >
                   {carousel.slides[0] ? (
                     <img 
                       src={carousel.slides[0].image} 
@@ -139,6 +149,11 @@ export default function Dashboard() {
                   )}
                   <div className="absolute top-4 right-4 bg-black/70 text-white px-2 py-1 rounded-md text-sm">
                     {carousel.slides.length} slides
+                  </div>
+                  <div className="absolute inset-0 bg-black/0 hover:bg-black/5 transition-colors flex items-center justify-center">
+                    <div className="opacity-0 hover:opacity-100 bg-white/90 text-gray-800 px-3 py-1 rounded-md text-sm font-medium transition-opacity">
+                      Click to view & edit
+                    </div>
                   </div>
                 </div>
                 
