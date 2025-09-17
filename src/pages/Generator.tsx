@@ -118,21 +118,6 @@ export default function Generator() {
                   </div>
                 ))}
                 
-                {images.length < 10 && (
-                  <label className="w-full h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
-                    <div className="text-center">
-                      <Upload className="h-6 w-6 text-gray-400 mx-auto mb-1" />
-                      <span className="text-xs text-gray-600">Add Image</span>
-                    </div>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                )}
               </div>
               
               {images.length === 0 && (
