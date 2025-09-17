@@ -18,6 +18,12 @@ export default function Generator() {
   const [images, setImages] = useState<File[]>([]);
   const [description, setDescription] = useState('');
   const [style, setStyle] = useState<'minimalist' | 'bold' | 'elegant'>('minimalist');
+  const [customColors, setCustomColors] = useState({
+    primary: '#3B82F6',
+    secondary: '#10B981', 
+    accent1: '#F59E0B',
+    accent2: '#EF4444'
+  });
   const [generating, setGenerating] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   
@@ -200,6 +206,102 @@ export default function Generator() {
               </div>
             </div>
 
+            {/* Color Customization */}
+            <div>
+              <label className="block text-lg font-semibold text-gray-900 mb-4">
+                Custom Colors (Optional)
+              </label>
+              <p className="text-gray-600 mb-4">Customize the colors used in your carousel design</p>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Primary Color
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="color"
+                        value={customColors.primary}
+                        onChange={(e) => setCustomColors(prev => ({ ...prev, primary: e.target.value }))}
+                        className="w-12 h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={customColors.primary}
+                        onChange={(e) => setCustomColors(prev => ({ ...prev, primary: e.target.value }))}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                        placeholder="#3B82F6"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Secondary Color
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="color"
+                        value={customColors.secondary}
+                        onChange={(e) => setCustomColors(prev => ({ ...prev, secondary: e.target.value }))}
+                        className="w-12 h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={customColors.secondary}
+                        onChange={(e) => setCustomColors(prev => ({ ...prev, secondary: e.target.value }))}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                        placeholder="#10B981"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Accent Color 1
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="color"
+                        value={customColors.accent1}
+                        onChange={(e) => setCustomColors(prev => ({ ...prev, accent1: e.target.value }))}
+                        className="w-12 h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={customColors.accent1}
+                        onChange={(e) => setCustomColors(prev => ({ ...prev, accent1: e.target.value }))}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                        placeholder="#F59E0B"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Accent Color 2
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="color"
+                        value={customColors.accent2}
+                        onChange={(e) => setCustomColors(prev => ({ ...prev, accent2: e.target.value }))}
+                        className="w-12 h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={customColors.accent2}
+                        onChange={(e) => setCustomColors(prev => ({ ...prev, accent2: e.target.value }))}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                        placeholder="#EF4444"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             {/* Usage Info */}
             {user && (
               <div className="bg-gray-50 rounded-xl p-4">
