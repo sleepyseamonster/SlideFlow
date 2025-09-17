@@ -476,6 +476,105 @@ export default function Generator() {
                 </div>
               </div>
             </div>
+
+            {/* Brand Presets */}
+            <div>
+              <label className="block text-lg font-semibold text-gray-900 mb-4">
+                Brand Presets (Optional)
+              </label>
+              <p className="text-gray-600 mb-6">Save and reuse your brand colors and fonts</p>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Apply Preset */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Apply Saved Preset
+                  </label>
+                  {presets.length > 0 ? (
+                    <div className="space-y-2">
+                      <select
+                        value={selectedPreset}
+                        onChange={(e) => {
+                          setSelectedPreset(e.target.value);
+                          if (e.target.value) {
+                            applyPreset(e.target.value);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="">Select a preset...</option>
+                        {presets.map((preset) => (
+                          <option key={preset.id} value={preset.id}>
+                            {preset.name}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedPreset && (
+                        <button
+                          onClick={() => deletePreset(selectedPreset)}
+                          className="text-sm text-red-600 hover:text-red-500"
+                        >
+                          Delete selected preset
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 py-3 px-4 bg-gray-50 rounded-lg">
+                      No presets saved yet
+                    </p>
+                  )}
+                </div>
+                
+                {/* Save Current Settings */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Save Current Settings
+                  </label>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={presetName}
+                      onChange={(e) => setPresetName(e.target.value)}
+                      placeholder="Enter preset name..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                    <button
+                      onClick={savePreset}
+                      disabled={!presetName.trim()}
+                      className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Save as Preset
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Saves current colors and font selections
+                  </p>
+                </div>
+              </div>
+              
+              {presets.length > 0 && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Saved Presets:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {presets.map((preset) => (
+                      <span
+                        key={preset.id}
+                        className="inline-flex items-center px-3 py-1 bg-white border border-gray-200 rounded-full text-sm"
+                      >
+                        {preset.name}
+                        <button
+                          onClick={() => deletePreset(preset.id)}
+                          className="ml-2 text-red-500 hover:text-red-700"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Usage Info */}
             {user && (
               <div className="bg-gray-50 rounded-xl p-4">
