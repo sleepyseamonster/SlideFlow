@@ -28,6 +28,7 @@ export default function Generator() {
   const [primaryFont, setPrimaryFont] = useState('Inter, sans-serif');
   const [secondaryFont, setSecondaryFont] = useState('Roboto, sans-serif');
   const [generating, setGenerating] = useState(false);
+  const [skipCustomFonts, setSkipCustomFonts] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   
   // Brand presets state
@@ -162,8 +163,8 @@ export default function Generator() {
       description,
       style,
       customColors: skipCustomColors ? null : customColors,
-      primaryFont,
-      secondaryFont,
+      primaryFont: skipCustomFonts ? null : primaryFont,
+      secondaryFont: skipCustomFonts ? null : secondaryFont,
       createdAt: new Date().toISOString().split('T')[0],
       slides: images.map((_, index) => ({
         id: (index + 1).toString(),
@@ -423,12 +424,28 @@ export default function Generator() {
 
             {/* Font Selection */}
             <div>
-              <label className="block text-lg font-semibold text-gray-900 mb-4">
-                Font Selection (Optional)
-              </label>
-              <p className="text-gray-600 mb-6">Choose custom fonts for your carousel design</p>
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-lg font-semibold text-gray-900">
+                  Font Selection (Optional)
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={skipCustomFonts}
+                    onChange={(e) => setSkipCustomFonts(e.target.checked)}
+                    className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 focus:ring-2 mr-2"
+                  />
+                  <span className="text-sm text-gray-600">Skip custom fonts</span>
+                </label>
+              </div>
+              <p className="text-gray-600 mb-6">
+                {skipCustomFonts 
+                  ? 'Using default fonts based on selected style' 
+                  : 'Choose custom fonts for your carousel design'
+                }
+              </p>
               
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className={`grid md:grid-cols-2 gap-6 transition-opacity ${skipCustomFonts ? 'opacity-50' : ''}`}>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Primary Font
@@ -436,8 +453,9 @@ export default function Generator() {
                   <div className="relative">
                     <select
                       value={primaryFont}
+                      disabled={skipCustomFonts}
                       onChange={(e) => setPrimaryFont(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white max-h-40 overflow-y-auto"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white max-h-40 overflow-y-auto disabled:bg-gray-100 disabled:cursor-not-allowed"
                       style={{ fontFamily: primaryFont }}
                     >
                       {universalFonts.map((font) => (
@@ -459,8 +477,9 @@ export default function Generator() {
                   <div className="relative">
                     <select
                       value={secondaryFont}
+                      disabled={skipCustomFonts}
                       onChange={(e) => setSecondaryFont(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white max-h-40 overflow-y-auto"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white max-h-40 overflow-y-auto disabled:bg-gray-100 disabled:cursor-not-allowed"
                       style={{ fontFamily: secondaryFont }}
                     >
                       {universalFonts.map((font) => (
