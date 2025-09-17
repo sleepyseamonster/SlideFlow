@@ -19,6 +19,7 @@ export default function Results() {
   const { user } = useAuth();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [instagramCaption, setInstagramCaption] = useState('');
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   if (!currentCarousel) {
     return (
