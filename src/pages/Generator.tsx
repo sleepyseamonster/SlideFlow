@@ -385,7 +385,7 @@ export default function Generator() {
                       ))}
                     </select>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: primaryFont }}>
+                  <p className="text-base text-gray-700 mt-2 font-medium" style={{ fontFamily: primaryFont }}>
                     Preview: The quick brown fox jumps
                   </p>
                 </div>
@@ -408,7 +408,7 @@ export default function Generator() {
                       ))}
                     </select>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: secondaryFont }}>
+                  <p className="text-base text-gray-700 mt-2 font-medium" style={{ fontFamily: secondaryFont }}>
                     Preview: The quick brown fox jumps
                   </p>
                 </div>
