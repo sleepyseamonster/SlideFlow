@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface User {
   id: string;
@@ -16,9 +14,9 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   loginWithGoogle: () => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: () => void;
   loading: boolean;
-  updateUser: (updates: Partial<User>) => Promise<void>;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,185 +39,74 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchUserProfile(session.user);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        await fetchUserProfile(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    const savedUser = localStorage.getItem('slideflow_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    setLoading(false);
   }, []);
 
-  const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return;
-      }
-
-      if (profile) {
-        setUser({
-          id: profile.id,
-          email: profile.email,
-          name: profile.name,
-          plan: profile.plan as 'free' | 'premium',
-          carouselsGenerated: profile.carousels_generated,
-          maxCarousels: profile.max_carousels
-        });
-      }
-    } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
-    }
-  };
-
   const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
+    // Mock authentication
+    if (email && password) {
+      const mockUser: User = {
+        id: '1',
         email,
-        password,
-      });
-
-      if (error) {
-        console.error('Login error:', error.message);
-        return false;
-      }
-
+        name: email.split('@')[0],
+        plan: 'free',
+        carouselsGenerated: 0,
+        maxCarousels: 1
+      };
+      setUser(mockUser);
+      localStorage.setItem('slideflow_user', JSON.stringify(mockUser));
       return true;
-    } catch (error) {
-      console.error('Login error:', error);
-      return false;
     }
+    return false;
   };
 
   const loginWithGoogle = async (): Promise<boolean> => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/dashboard'
-        }
-      });
-
-      if (error) {
-        console.error('Google login error:', error.message);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Google login error:', error);
-      return false;
-    }
+    // Mock Google OAuth
+    const mockUser: User = {
+      id: '1',
+      email: 'user@gmail.com',
+      name: 'Google User',
+      plan: 'free',
+      carouselsGenerated: 0,
+      maxCarousels: 1
+    };
+    setUser(mockUser);
+    localStorage.setItem('slideflow_user', JSON.stringify(mockUser));
+    return true;
   };
 
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
+    // Mock signup
+    if (email && password && name) {
+      const mockUser: User = {
+        id: '1',
         email,
-        password,
-        options: {
-          data: {
-            name: name,
-          },
-          emailRedirectTo: window.location.origin + '/dashboard'
-        }
-      });
-
-      if (error) {
-        console.error('Signup error:', error.message);
-        return false;
-      }
-
-      // If user is confirmed immediately, create profile
-      if (data.user && data.session) {
-        await createUserProfile(data.user, name);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Signup error:', error);
-      return false;
-    }
-  };
-
-  const createUserProfile = async (user: SupabaseUser, name: string) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .insert({
-          id: user.id,
-          email: user.email || '',
-          name: name,
-          plan: 'free',
-          carousels_generated: 0,
-          max_carousels: 1
-        });
-
-      if (error) {
-        console.error('Error creating profile:', error);
-      }
-    } catch (error) {
-      console.error('Error in createUserProfile:', error);
-    }
-  };
-
-  const logout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Logout error:', error.message);
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
-
-  const updateUser = async (updates: Partial<User>) => {
-    if (!user) return;
-
-    try {
-      // Convert camelCase to snake_case for database
-      const dbUpdates: any = {
-        updated_at: new Date().toISOString()
+        name,
+        plan: 'free',
+        carouselsGenerated: 0,
+        maxCarousels: 1
       };
+      setUser(mockUser);
+      localStorage.setItem('slideflow_user', JSON.stringify(mockUser));
+      return true;
+    }
+    return false;
+  };
 
-      if (updates.name !== undefined) dbUpdates.name = updates.name;
-      if (updates.plan !== undefined) dbUpdates.plan = updates.plan;
-      if (updates.carouselsGenerated !== undefined) dbUpdates.carousels_generated = updates.carouselsGenerated;
-      if (updates.maxCarousels !== undefined) dbUpdates.max_carousels = updates.maxCarousels;
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('slideflow_user');
+  };
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(dbUpdates)
-        .eq('id', user.id);
-
-      if (error) {
-        console.error('Error updating profile:', error);
-        return;
-      }
-
-      // Update local state
-      setUser(prev => prev ? { ...prev, ...updates } : null);
-    } catch (error) {
-      console.error('Error in updateUser:', error);
+  const updateUser = (updates: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...updates };
+      setUser(updatedUser);
+      localStorage.setItem('slideflow_user', JSON.stringify(updatedUser));
     }
   };
 

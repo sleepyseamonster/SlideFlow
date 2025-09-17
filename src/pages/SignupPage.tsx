@@ -22,9 +22,6 @@ export default function SignupPage() {
     try {
       const success = await signup(email, password, name);
       if (success) {
-        // Show success message for email confirmation
-        setError('');
-        alert('Account created successfully! Please check your email to confirm your account, then you can sign in.');
         navigate('/dashboard');
       } else {
         setError('Signup failed');
