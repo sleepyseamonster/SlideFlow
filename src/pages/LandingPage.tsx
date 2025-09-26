@@ -181,7 +181,7 @@ export default function LandingPage() {
             </div>
 
             {/* Premium Plan */}
-            <div className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-2xl p-8 relative overflow-hidden">
+            <div className="bg-gradient-to-br from-fuchsia-500 to-pink-500 text-white rounded-2xl p-8 relative overflow-hidden">
               <div className="absolute top-4 right-4">
                 <span className="bg-teal-400 text-indigo-900 px-3 py-1 rounded-full text-sm font-semibold">
                   Popular
