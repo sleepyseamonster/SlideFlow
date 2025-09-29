@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCarousel } from '../contexts/CarouselContext';
 import { useContentLibrary } from '../contexts/ContentLibraryContext';
+import { supabase } from '../lib/supabase';
+import { n8nPost } from '../lib/n8n';
 import ImportLibraryModal from '../components/ImportLibraryModal';
 import Navbar from '../components/Navbar';
 import { 
@@ -13,6 +15,31 @@ import {
   ArrowRight,
   FolderOpen
 } from 'lucide-react';
+
+const BUCKET_NAME = "media";
+const ASPECT = "1080x1350";
+const MAX_FILES = 10;
+
+// Upload one file to Supabase
+async function uploadOne(userId: string, file: File) {
+  const ext = file.name.split(".").pop() || "bin";
+  const ts = Date.now();
+  const path = `user_${userId}/${new Date().toISOString().slice(0,10)}/${ts}_${crypto.randomUUID()}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(path, file, { upsert: false });
+
+  if (error) throw error;
+
+  return {
+    bucket: BUCKET_NAME,
+    path,
+    filename: file.name,
+    mime_type: file.type || "application/octet-stream",
+    size_bytes: file.size,
+  };
+}
 
 export default function Generator() {
   const [images, setImages] = useState<File[]>([]);
@@ -146,43 +173,80 @@ export default function Generator() {
   const handleGenerate = async () => {
     if (!user) return;
     
-    if (user.carouselsGenerated >= user.maxCarousels) {
-      alert('You\'ve reached your generation limit. Please upgrade to premium.');
+    if (images.length === 0) {
+      alert('Please select at least 1 image.');
+      return;
+    }
+    
+    if (images.length > MAX_FILES) {
+      alert(`Maximum ${MAX_FILES} images allowed.`);
       return;
     }
 
     setGenerating(true);
     
-    // Mock AI generation delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Create mock carousel
-    const newCarousel = {
-      id: Date.now().toString(),
-      title: description.slice(0, 50) + (description.length > 50 ? '...' : ''),
-      description,
-      style,
-      customColors: skipCustomColors ? null : customColors,
-      primaryFont: skipCustomFonts ? null : primaryFont,
-      secondaryFont: skipCustomFonts ? null : secondaryFont,
-      createdAt: new Date().toISOString().split('T')[0],
-      slides: images.map((_, index) => ({
-        id: (index + 1).toString(),
-        image: `https://images.pexels.com/photos/318${4320 + index}/pexels-photo-318${4320 + index}.jpeg?auto=compress&cs=tinysrgb&w=1080&h=1080&dpr=2`,
-        caption: `Slide ${index + 1}: ${description}`,
-        design: style
-      }))
-    };
-    
-    addCarousel(newCarousel);
-    setCurrentCarousel(newCarousel);
-    updateUser({ carouselsGenerated: user.carouselsGenerated + 1 });
-    
-    setGenerating(false);
-    navigate('/results');
+    try {
+      const userId = user.id;
+
+      // Upload all files to Supabase
+      const uploadedInfos = await Promise.all(images.map(f => uploadOne(userId, f)));
+
+      // Process each uploaded file through n8n
+      const mediaIds: string[] = [];
+      for (const info of uploadedInfos) {
+        const ing: any = await n8nPost("/ingest", info);
+        mediaIds.push(ing.media_id);
+
+        await n8nPost("/derivatives", {
+          media_id: ing.media_id,
+          types: ["vertical","square","poster"]
+        });
+      }
+
+      // Create brand profile
+      const brand: any = await n8nPost("/brand_profile", {
+        palette: skipCustomColors ? {} : { 
+          primary: customColors.primary, 
+          secondary: customColors.secondary, 
+          accent1: customColors.accent1, 
+          accent2: customColors.accent2 
+        },
+        fonts: skipCustomFonts ? {} : { 
+          primary: primaryFont, 
+          secondary: secondaryFont 
+        },
+        defaults: { style }
+      });
+
+      // Create carousel
+      const carousel: any = await n8nPost("/carousel", {
+        title: description.slice(0, 100) || "Untitled Carousel",
+        aspect: ASPECT,
+        brand_profile_id: brand.brand_profile_id
+      });
+
+      // Create slides
+      let pos = 1;
+      for (const media_id of mediaIds) {
+        await n8nPost("/carousel_slide", {
+          carousel_id: carousel.carousel_id,
+          media_id,
+          position: pos
+        });
+        pos++;
+      }
+
+      alert("Carousel created successfully! Redirecting to dashboard.");
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error('Carousel generation error:', err);
+      alert(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setGenerating(false);
+    }
   };
 
-  const canGenerate = images.length > 0 && description.trim() && user && user.carouselsGenerated < user.maxCarousels;
+  const canGenerate = images.length > 0 && description.trim() && user;
 
   return (
     <div className="min-h-screen bg-gray-50">
