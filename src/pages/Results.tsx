@@ -20,6 +20,7 @@ export default function Results() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [instagramCaption, setInstagramCaption] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [loading, setLoading] = useState(!currentCarousel);
 
   if (!currentCarousel) {
     return (
@@ -34,6 +35,22 @@ export default function Results() {
             >
               Create a new carousel
             </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading if we don't have slides yet
+  if (loading || !currentCarousel.slides || currentCarousel.slides.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="pt-20 flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading carousel...</h2>
+            <p className="text-gray-600">Please wait while we load your carousel</p>
           </div>
         </div>
       </div>

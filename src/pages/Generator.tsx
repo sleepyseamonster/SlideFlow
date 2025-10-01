@@ -236,8 +236,22 @@ export default function Generator() {
         pos++;
       }
 
-      alert("Carousel created successfully! Redirecting to dashboard.");
-      navigate('/dashboard');
+      // Fetch the generated carousel from the database and navigate to results
+      try {
+        const generatedCarousel = await fetchCarousel(carousel.carousel_id);
+        if (generatedCarousel) {
+          setCurrentCarousel(generatedCarousel);
+          navigate('/results');
+        } else {
+          // Fallback to dashboard if we can't fetch the carousel
+          alert("Carousel created successfully! Redirecting to dashboard.");
+          navigate('/dashboard');
+        }
+      } catch (fetchError) {
+        console.error('Error fetching generated carousel:', fetchError);
+        alert("Carousel created successfully! Redirecting to dashboard.");
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       console.error('Carousel generation error:', err);
       alert(err.message || "Something went wrong. Please try again.");

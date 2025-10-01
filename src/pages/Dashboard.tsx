@@ -17,7 +17,7 @@ import {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { carousels, deleteCarousel, duplicateCarousel, setCurrentCarousel } = useCarousel();
+  const { carousels, loading, deleteCarousel, duplicateCarousel, setCurrentCarousel, fetchCarousel } = useCarousel();
   const navigate = useNavigate();
 
   const canGenerate = user && user.carouselsGenerated < user.maxCarousels;
@@ -25,11 +25,37 @@ export default function Dashboard() {
   // Calculate time saved (assuming each carousel saves ~2.5 hours of manual work)
   const timeSavedHours = user ? Math.round(user.carouselsGenerated * 2.5 * 10) / 10 : 0;
 
-  const handleCarouselClick = (carousel: any) => {
-    setCurrentCarousel(carousel);
-    navigate('/results');
+  const handleCarouselClick = async (carousel: any) => {
+    try {
+      // Fetch the full carousel data with slides
+      const fullCarousel = await fetchCarousel(carousel.id);
+      if (fullCarousel) {
+        setCurrentCarousel(fullCarousel);
+        navigate('/results');
+      } else {
+        alert('Could not load carousel details');
+      }
+    } catch (error) {
+      console.error('Error loading carousel:', error);
+      alert('Error loading carousel');
+    }
   };
   
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="pt-20 pb-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -136,19 +162,14 @@ export default function Dashboard() {
                   className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 relative cursor-pointer hover:opacity-90 transition-opacity"
                   onClick={() => handleCarouselClick(carousel)}
                 >
-                  {carousel.slides[0] ? (
-                    <img 
-                      src={carousel.slides[0].image} 
-                      alt={carousel.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      No preview
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <div className="text-center">
+                      <ImageIcon className="h-12 w-12 mx-auto mb-2" />
+                      <p className="text-sm">Click to view</p>
                     </div>
-                  )}
+                  </div>
                   <div className="absolute top-4 right-4 bg-black/70 text-white px-2 py-1 rounded-md text-sm">
-                    {carousel.slides.length} slides
+                    Carousel
                   </div>
                   <div className="absolute inset-0 bg-black/0 hover:bg-black/5 transition-colors flex items-center justify-center">
                     <div className="opacity-0 hover:opacity-100 bg-white/90 text-gray-800 px-3 py-1 rounded-md text-sm font-medium transition-opacity">
@@ -162,7 +183,7 @@ export default function Dashboard() {
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">{carousel.description}</p>
                   
                   <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                    <span className="bg-gray-100 px-2 py-1 rounded capitalize">{carousel.style}</span>
+                    <span className="bg-gray-100 px-2 py-1 rounded capitalize">{carousel.status || carousel.style}</span>
                     <span>{carousel.createdAt}</span>
                   </div>
                   
