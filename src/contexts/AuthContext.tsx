@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface User {
   id: string;
@@ -38,75 +40,122 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const savedUser = localStorage.getItem('slideflow_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserFromSupabase(session.user);
+      }
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setUserFromSupabase(session.user);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  const setUserFromSupabase = (supabaseUser: SupabaseUser) => {
+    // Create user with Supabase data and default values for custom fields
+    const appUser: User = {
+      id: supabaseUser.id,
+      email: supabaseUser.email || '',
+      name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+      plan: 'free', // Default value
+      carouselsGenerated: 0, // Default value
+      maxCarousels: 1 // Default value
+    };
+    setUser(appUser);
+  };
+
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Mock authentication
-    if (email && password) {
-      const mockUser: User = {
-        id: '1',
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        name: email.split('@')[0],
-        plan: 'free',
-        carouselsGenerated: 0,
-        maxCarousels: 1
-      };
-      setUser(mockUser);
-      localStorage.setItem('slideflow_user', JSON.stringify(mockUser));
-      return true;
+        password,
+      });
+
+      if (error) {
+        console.error('Login error:', error.message);
+        return false;
+      }
+
+      return !!data.user;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
-    return false;
   };
 
   const loginWithGoogle = async (): Promise<boolean> => {
-    // Mock Google OAuth
-    const mockUser: User = {
-      id: '1',
-      email: 'user@gmail.com',
-      name: 'Google User',
-      plan: 'free',
-      carouselsGenerated: 0,
-      maxCarousels: 1
-    };
-    setUser(mockUser);
-    localStorage.setItem('slideflow_user', JSON.stringify(mockUser));
-    return true;
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/generate`
+        }
+      });
+
+      if (error) {
+        console.error('Google login error:', error.message);
+        return false;
+      }
+
+      return true; // OAuth will handle the redirect
+    } catch (error) {
+      console.error('Google login error:', error);
+      return false;
+    }
   };
 
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
-    // Mock signup
-    if (email && password && name) {
-      const mockUser: User = {
-        id: '1',
+    try {
+      const { data, error } = await supabase.auth.signUp({
         email,
-        name,
-        plan: 'free',
-        carouselsGenerated: 0,
-        maxCarousels: 1
-      };
-      setUser(mockUser);
-      localStorage.setItem('slideflow_user', JSON.stringify(mockUser));
-      return true;
+        password,
+        options: {
+          data: {
+            name: name,
+          },
+        },
+      });
+
+      if (error) {
+        console.error('Signup error:', error.message);
+        return false;
+      }
+
+      return !!data.user;
+    } catch (error) {
+      console.error('Signup error:', error);
+      return false;
     }
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('slideflow_user');
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error.message);
+      }
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      setUser(null);
+    }
   };
 
   const updateUser = (updates: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
-      localStorage.setItem('slideflow_user', JSON.stringify(updatedUser));
     }
   };
 
