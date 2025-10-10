@@ -9,12 +9,16 @@ interface User {
   plan: 'free' | 'premium';
   carouselsGenerated: number;
   maxCarousels: number;
+  instagramConnected: boolean;
+  instagramBusinessAccountId?: string;
+  facebookAccessToken?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  loginWithInstagram: () => Promise<boolean>;
+  loginWithFacebook: () => Promise<boolean>;
+  connectInstagram: () => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
@@ -67,10 +71,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const appUser: User = {
       id: supabaseUser.id,
       email: supabaseUser.email || '',
-      name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-      plan: 'free', // Default value
-      carouselsGenerated: 0, // Default value
-      maxCarousels: 1 // Default value
+      name: supabaseUser.user_metadata?.name || supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+      plan: 'free',
+      carouselsGenerated: 0,
+      maxCarousels: 1,
+      instagramConnected: !!supabaseUser.user_metadata?.instagram_business_account_id,
+      instagramBusinessAccountId: supabaseUser.user_metadata?.instagram_business_account_id,
+      facebookAccessToken: supabaseUser.user_metadata?.provider_token
     };
     setUser(appUser);
   };
@@ -94,23 +101,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const loginWithInstagram = async (): Promise<boolean> => {
+  const loginWithFacebook = async (): Promise<boolean> => {
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'instagram',
+        provider: 'facebook',
         options: {
-          redirectTo: `${window.location.origin}/generate`
+          redirectTo: `${window.location.origin}/dashboard`,
+          scopes: 'public_profile,email,instagram_basic,instagram_content_publish,pages_read_engagement,pages_show_list'
         }
       });
 
       if (error) {
-        console.error('Instagram login error:', error.message);
+        console.error('Facebook login error:', error.message);
         return false;
       }
 
-      return true; // OAuth will handle the redirect
+      return true;
     } catch (error) {
-      console.error('Instagram login error:', error);
+      console.error('Facebook login error:', error);
+      return false;
+    }
+  };
+
+  const connectInstagram = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          scopes: 'instagram_basic,instagram_content_publish,pages_read_engagement,pages_show_list'
+        }
+      });
+
+      if (error) {
+        console.error('Instagram connection error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Instagram connection error:', error);
       return false;
     }
   };
@@ -162,7 +192,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value = {
     user,
     login,
-    loginWithInstagram,
+    loginWithFacebook,
+    connectInstagram,
     signup,
     logout,
     loading,

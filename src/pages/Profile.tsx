@@ -2,23 +2,25 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
-import { 
-  User, 
-  Crown, 
-  CreditCard, 
+import {
+  User,
+  Crown,
+  CreditCard,
   Settings,
   Check,
   Zap,
   Users,
-  Sparkles
+  Sparkles,
+  Instagram
 } from 'lucide-react';
 
 export default function Profile() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, connectInstagram } = useAuth();
   const navigate = useNavigate();
   const [editableName, setEditableName] = useState(user?.name || '');
   const [isEditingName, setIsEditingName] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
+  const [connectingInstagram, setConnectingInstagram] = useState(false);
 
   const handleUpgradeToPremium = () => {
     // Mock Stripe integration
@@ -38,6 +40,18 @@ export default function Profile() {
     setEditableName(user?.name || '');
     setIsEditingName(false);
   };
+
+  const handleConnectInstagram = async () => {
+    setConnectingInstagram(true);
+    try {
+      await connectInstagram();
+    } catch (error) {
+      console.error('Failed to connect Instagram:', error);
+    } finally {
+      setConnectingInstagram(false);
+    }
+  };
+
   if (!user) {
     return null;
   }
@@ -145,6 +159,51 @@ export default function Profile() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Instagram Connection */}
+              <div className="bg-white rounded-2xl shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">Instagram Integration</h3>
+                {user.instagramConnected ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <Instagram className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="font-medium text-gray-900">Instagram Business Connected</p>
+                          <p className="text-sm text-gray-600">You can now auto-post carousels to Instagram</p>
+                        </div>
+                      </div>
+                      <Check className="h-6 w-6 text-green-600" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <div className="p-2 bg-gray-100 rounded-lg">
+                          <Instagram className="h-5 w-5 text-gray-600" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="font-medium text-gray-900">Connect Instagram Business</p>
+                          <p className="text-sm text-gray-600">Auto-share your carousels to Instagram</p>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleConnectInstagram}
+                      disabled={connectingInstagram}
+                      className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white py-3 px-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {connectingInstagram ? 'Connecting...' : 'Connect Instagram Business Account'}
+                    </button>
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      Requires an Instagram Business or Creator account linked to Facebook
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Usage Stats */}
