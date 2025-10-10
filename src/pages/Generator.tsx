@@ -172,69 +172,114 @@ export default function Generator() {
 
   const handleGenerate = async () => {
     if (!user) return;
-    
+
     if (images.length === 0) {
       alert('Please select at least 1 image.');
       return;
     }
-    
+
     if (images.length > MAX_FILES) {
       alert(`Maximum ${MAX_FILES} images allowed.`);
       return;
     }
 
     setGenerating(true);
-    
+
     try {
       const userId = user.id;
 
       // Upload all files to Supabase
       const uploadedInfos = await Promise.all(images.map(f => uploadOne(userId, f)));
 
-      // Process each uploaded file through n8n
+      // 1. Ingest: Process each uploaded file
       const mediaIds: string[] = [];
+      const captionIds: string[] = [];
       for (const info of uploadedInfos) {
         const ing: any = await n8nPost("/ingest", info);
         mediaIds.push(ing.media_id);
 
+        // 2. Derivatives: Generate different renditions
         await n8nPost("/derivatives", {
           media_id: ing.media_id,
           types: ["vertical","square","poster"]
         });
+
+        // 3. Captions (Manual): Add user-supplied caption
+        if (description) {
+          const captionResult: any = await n8nPost("/captions", {
+            media_id: ing.media_id,
+            text: description,
+            language: "en",
+            source: "user"
+          });
+          captionIds.push(captionResult.caption_id);
+        }
+
+        // 4. Captions (AI): Generate AI caption
+        try {
+          await n8nPost("/captions/ai", {
+            media_id: ing.media_id,
+            language: "en",
+            style: style
+          });
+        } catch (error) {
+          console.warn('AI caption generation failed:', error);
+        }
+
+        // 5. Transcripts Queue: Queue for transcription (if video/audio)
+        if (info.mime_type.startsWith('video/') || info.mime_type.startsWith('audio/')) {
+          try {
+            await n8nPost("/transcripts/queue", {
+              media_id: ing.media_id,
+              provider: "default"
+            });
+          } catch (error) {
+            console.warn('Transcript queue failed:', error);
+          }
+        }
       }
 
-      // Create brand profile
+      // 6. Search: Query media by filters (demonstration call)
+      try {
+        await n8nPost("/search", {
+          orientation: "vertical",
+          limit: 24
+        });
+      } catch (error) {
+        console.warn('Search call failed:', error);
+      }
+
+      // 7. Brand Profile: Create brand identity
       const brand: any = await n8nPost("/brand_profile", {
-        palette: skipCustomColors ? {} : { 
-          primary: customColors.primary, 
-          secondary: customColors.secondary, 
-          accent1: customColors.accent1, 
-          accent2: customColors.accent2 
+        palette: skipCustomColors ? {} : {
+          primary: customColors.primary,
+          secondary: customColors.secondary,
+          accent1: customColors.accent1,
+          accent2: customColors.accent2
         },
-        fonts: skipCustomFonts ? {} : { 
-          primary: primaryFont, 
-          secondary: secondaryFont 
+        fonts: skipCustomFonts ? {} : {
+          primary: primaryFont,
+          secondary: secondaryFont
         },
         defaults: { style }
       });
 
-      // Create carousel
+      // 8. Carousel: Create carousel container
       const carousel: any = await n8nPost("/carousel", {
         title: description.slice(0, 100) || "Untitled Carousel",
         aspect: ASPECT,
         brand_profile_id: brand.brand_profile_id
       });
 
-      // Log the carousel response to debug the structure
       console.log('N8N carousel response:', carousel);
 
-      // Get carousel ID (N8N might return it as 'id' or 'carousel_id')
       const carouselId = carousel.carousel_id || carousel.id;
-      
+
       if (!carouselId) {
         throw new Error('No carousel ID returned from N8N');
       }
-      // Create slides
+
+      // 9. Carousel Slide: Add media to carousel
       let pos = 1;
       for (const media_id of mediaIds) {
         await n8nPost("/carousel_slide", {
@@ -245,6 +290,37 @@ export default function Generator() {
         pos++;
       }
 
+      // 10. Post to Platform: Post carousel (Instagram example)
+      try {
+        await n8nPost("/post/instagram", {
+          media_ids: mediaIds,
+          required_derivative_types: ["vertical", "square"],
+          caption_id: captionIds[0] || null,
+          account_id: userId
+        });
+      } catch (error) {
+        console.warn('Post to Instagram failed:', error);
+      }
+
+      // 11. Usage Quota: Fetch usage metrics
+      try {
+        await n8nPost("/usage_quota", {
+          user_id: userId
+        });
+      } catch (error) {
+        console.warn('Usage quota check failed:', error);
+      }
+
+      // 12. Posting Log: Retrieve posting logs
+      try {
+        await n8nPost("/posting_log", {
+          user_id: userId,
+          carousel_id: carouselId
+        });
+      } catch (error) {
+        console.warn('Posting log retrieval failed:', error);
+      }
+
       // Fetch the generated carousel from the database and navigate to results
       try {
         const generatedCarousel = await fetchCarousel(carouselId);
@@ -252,7 +328,6 @@ export default function Generator() {
           setCurrentCarousel(generatedCarousel);
           navigate('/results');
         } else {
-          // Fallback to dashboard if we can't fetch the carousel
           alert("Carousel created successfully! Redirecting to dashboard.");
           navigate('/dashboard');
         }
