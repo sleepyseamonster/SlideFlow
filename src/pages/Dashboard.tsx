@@ -60,23 +60,30 @@ export function Dashboard() {
                   </h3>
                   <SubscriptionStatus />
                 </div>
-                
+
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-sm font-medium text-gray-900 mb-2">
                     Account Email
                   </h3>
                   <p className="text-sm text-gray-600">{user.email}</p>
                 </div>
-                
+
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-sm font-medium text-gray-900 mb-2">
                     Quick Actions
                   </h3>
-                  <Link to="/pricing">
-                    <Button size="sm" variant="outline">
-                      View Plans
-                    </Button>
-                  </Link>
+                  <div className="space-y-2">
+                    <Link to="/generate">
+                      <Button size="sm" className="w-full">
+                        Create Carousel
+                      </Button>
+                    </Link>
+                    <Link to="/pricing">
+                      <Button size="sm" variant="outline" className="w-full">
+                        View Plans
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
