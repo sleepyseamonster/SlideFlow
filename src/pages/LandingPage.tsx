@@ -32,14 +32,18 @@ export default function LandingPage() {
     try {
       const { url, error } = await createCheckoutSession(user.id);
       if (error) {
-        alert('Failed to start checkout. Please try again.');
+        console.error('Checkout error:', error);
+        alert(`Failed to start checkout: ${error}`);
         return;
       }
       if (url) {
         window.location.href = url;
+      } else {
+        alert('No checkout URL received. Please try again.');
       }
-    } catch (err) {
-      alert('Failed to start checkout. Please try again.');
+    } catch (err: any) {
+      console.error('Unexpected error:', err);
+      alert(`Failed to start checkout: ${err.message}`);
     } finally {
       setLoading(false);
     }

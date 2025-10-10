@@ -1,5 +1,8 @@
 export async function createCheckoutSession(userId: string): Promise<{ url: string | null; error?: string }> {
   try {
+    console.log('Creating checkout session for user:', userId);
+    console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+
     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`, {
       method: 'POST',
       headers: {
@@ -9,10 +12,19 @@ export async function createCheckoutSession(userId: string): Promise<{ url: stri
       body: JSON.stringify({ userId }),
     });
 
-    const data = await response.json();
+    console.log('Response status:', response.status);
+    const text = await response.text();
+    console.log('Response text:', text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Invalid response: ${text}`);
+    }
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to create checkout session');
+      throw new Error(data.error || `Failed to create checkout session: ${response.status}`);
     }
 
     return { url: data.url };
