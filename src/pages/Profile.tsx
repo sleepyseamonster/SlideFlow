@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { createCheckoutSession } from '../lib/stripe';
 import Navbar from '../components/Navbar';
 import {
   User,
@@ -21,12 +22,26 @@ export default function Profile() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
   const [connectingInstagram, setConnectingInstagram] = useState(false);
+  const [upgradingPlan, setUpgradingPlan] = useState(false);
 
-  const handleUpgradeToPremium = () => {
-    // Mock Stripe integration
-    alert('Redirecting to Stripe checkout... (This is a demo)');
-    // In real app, integrate with Stripe
-    updateUser({ plan: 'premium', maxCarousels: 999 });
+  const handleUpgradeToPremium = async () => {
+    if (!user) return;
+
+    setUpgradingPlan(true);
+    try {
+      const { url, error } = await createCheckoutSession(user.id);
+      if (error) {
+        alert('Failed to start checkout. Please try again.');
+        return;
+      }
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (err) {
+      alert('Failed to start checkout. Please try again.');
+    } finally {
+      setUpgradingPlan(false);
+    }
   };
 
   const handleUpdateName = () => {
@@ -266,9 +281,10 @@ export default function Profile() {
                       </ul>
                       <button
                         onClick={handleUpgradeToPremium}
-                        className="bg-white hover:bg-gray-100 text-indigo-600 px-6 py-3 rounded-xl font-semibold transition-colors transform hover:scale-105 hover:shadow-lg"
+                        disabled={upgradingPlan}
+                        className="bg-white hover:bg-gray-100 text-indigo-600 px-6 py-3 rounded-xl font-semibold transition-colors transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                       >
-                        Upgrade for $9/month
+                        {upgradingPlan ? 'Loading...' : 'Upgrade for $9/month'}
                       </button>
                     </div>
                     <Sparkles className="h-8 w-8 text-teal-300" />

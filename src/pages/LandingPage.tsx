@@ -1,5 +1,7 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { createCheckoutSession } from '../lib/stripe';
+import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
 import CircularGalleryDemo from '../components/CircularGalleryDemo';
 import { SparklesText } from '../components/ui/sparkles-text';
@@ -16,6 +18,32 @@ import {
 } from 'lucide-react';
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  const handleStartPremium = async () => {
+    if (!user) {
+      navigate('/signup');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { url, error } = await createCheckoutSession(user.id);
+      if (error) {
+        alert('Failed to start checkout. Please try again.');
+        return;
+      }
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (err) {
+      alert('Failed to start checkout. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
   const features = [
     {
       icon: <ImagePlus className="h-6 w-6" />,
@@ -210,12 +238,13 @@ export default function LandingPage() {
                   <span>Priority support</span>
                 </li>
               </ul>
-              <Link 
-                to="/signup"
-                className="w-full bg-white hover:bg-gray-100 text-indigo-600 py-3 px-6 rounded-xl font-semibold text-center block transition-colors"
+              <button
+                onClick={handleStartPremium}
+                disabled={loading}
+                className="w-full bg-white hover:bg-gray-100 text-indigo-600 py-3 px-6 rounded-xl font-semibold text-center block transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Start Premium
-              </Link>
+                {loading ? 'Loading...' : 'Start Premium'}
+              </button>
             </div>
           </div>
         </div>
