@@ -124,23 +124,89 @@ export default function Generator() {
     }
   };
 
-  const savePreset = () => {
+  const savePreset = async () => {
     if (!presetName.trim()) {
       alert('Please enter a preset name');
       return;
     }
-    
-    const newPreset = {
-      id: Date.now().toString(),
-      name: presetName.trim(),
-      colors: { ...customColors },
-      primaryFont,
-      secondaryFont
-    };
-    
-    setPresets(prev => [...prev, newPreset]);
-    setPresetName('');
-    alert(`Preset "${newPreset.name}" saved successfully!`);
+
+    if (!user) {
+      alert('You must be logged in to save presets');
+      return;
+    }
+
+    setGenerating(true);
+
+    try {
+      const userId = user.id;
+
+      // Prepare data to send to webhook
+      const allData = {
+        user_id: userId,
+        uploaded_files: [],
+        description: '',
+        style: style,
+        brand_profile: {
+          palette: {
+            primary: customColors.primary,
+            secondary: customColors.secondary,
+            accent1: customColors.accent1,
+            accent2: customColors.accent2
+          },
+          fonts: {
+            primary: primaryFont,
+            secondary: secondaryFont
+          },
+          defaults: { style }
+        },
+        carousel: {
+          title: presetName.trim(),
+          aspect: ASPECT
+        },
+        captions: {
+          text: '',
+          language: 'en',
+          source: 'user'
+        },
+        ai_caption: {
+          language: 'en',
+          style: style
+        },
+        derivatives: {
+          types: []
+        },
+        search_params: {
+          orientation: 'vertical',
+          limit: 0
+        },
+        post_platform: {
+          platform: 'instagram',
+          required_derivative_types: []
+        },
+        save_preset_only: true
+      };
+
+      // Send to webhook
+      await n8nPost('/all-data', allData);
+
+      // Also save locally for immediate UI update
+      const newPreset = {
+        id: Date.now().toString(),
+        name: presetName.trim(),
+        colors: { ...customColors },
+        primaryFont,
+        secondaryFont
+      };
+
+      setPresets(prev => [...prev, newPreset]);
+      setPresetName('');
+      alert(`Preset "${newPreset.name}" saved successfully!`);
+    } catch (err: any) {
+      console.error('Error saving preset:', err);
+      alert(err.message || 'Failed to save preset. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const applyPreset = (presetId: string) => {
