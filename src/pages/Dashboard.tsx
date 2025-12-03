@@ -21,13 +21,22 @@ import {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { carousels, loading, deleteCarousel, duplicateCarousel, setCurrentCarousel, fetchCarousel, addCarousel, updateCarousel } = useCarousel();
+  const { carousels, loading, deleteCarousel, duplicateCarousel, setCurrentCarousel, fetchCarousel, addCarousel, updateCarousel, scheduleCarousel } = useCarousel();
   const navigate = useNavigate();
   const [creatingCarousel, setCreatingCarousel] = React.useState(false);
   const [previewSlides] = React.useState<Record<string, CarouselSlide[]>>({});
   const [activeSlideIndex] = React.useState<Record<string, number>>({});
   const [editingTitleId, setEditingTitleId] = React.useState<string | null>(null);
   const [titleDrafts, setTitleDrafts] = React.useState<Record<string, string>>({});
+  const [currentWeekStart, setCurrentWeekStart] = React.useState(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    return startOfWeek;
+  });
+  const [draggedCarouselId, setDraggedCarouselId] = React.useState<string | null>(null);
+  const [dragOverDayId, setDragOverDayId] = React.useState<string | null>(null);
 
   const canGenerate = user && user.carouselsGenerated < user.maxCarousels;
   const planLabel = (user?.plan || 'free').toString();
@@ -36,21 +45,50 @@ export default function Dashboard() {
 
   const calendarDays = React.useMemo(() => {
     const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
     return Array.from({ length: 7 }, (_, index) => {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + index);
+      const day = new Date(currentWeekStart);
+      day.setDate(currentWeekStart.getDate() + index);
       const weekdayName = day.toLocaleDateString('en-US', { weekday: 'short' });
+
+      // Find scheduled carousels for this day
+      const dayStart = new Date(day);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(day);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const scheduledCarousels = carousels.filter(c => {
+        if (!c.scheduled_at) return false;
+        const scheduledDate = new Date(c.scheduled_at);
+        return scheduledDate >= dayStart && scheduledDate <= dayEnd;
+      });
+
       return {
         letter: weekdayName.charAt(0),
         date: day.getDate(),
         month: day.toLocaleDateString('en-US', { month: 'short' }),
         isToday: day.toDateString() === now.toDateString(),
         id: day.toDateString(),
+        fullDate: new Date(day),
+        scheduledCarousels,
       };
     });
-  }, []);
+  }, [currentWeekStart, carousels]);
+
+  const nextWeek = () => {
+    setCurrentWeekStart(prev => {
+      const next = new Date(prev);
+      next.setDate(prev.getDate() + 7);
+      return next;
+    });
+  };
+
+  const prevWeek = () => {
+    setCurrentWeekStart(prev => {
+      const previous = new Date(prev);
+      previous.setDate(prev.getDate() - 7);
+      return previous;
+    });
+  };
 
   const weekRangeLabel = React.useMemo(() => {
     if (!calendarDays.length) return '';
@@ -67,6 +105,51 @@ export default function Dashboard() {
 
   // Calculate time saved (assuming each carousel saves ~2.5 hours of manual work)
   const timeSavedHours = user ? Math.round(user.carouselsGenerated * 2.5 * 10) / 10 : 0;
+
+  // Drag and Drop Handlers
+  const handleDragStart = (carouselId: string) => (e: React.DragEvent) => {
+    setDraggedCarouselId(carouselId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', carouselId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedCarouselId(null);
+    setDragOverDayId(null);
+  };
+
+  const handleDragOver = (dayId: string) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverDayId(dayId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverDayId(null);
+  };
+
+  const handleDrop = (day: typeof calendarDays[0]) => async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverDayId(null);
+
+    if (!draggedCarouselId) return;
+
+    try {
+      // Schedule the carousel for the dropped date (at noon)
+      const scheduledDate = new Date(day.fullDate);
+      scheduledDate.setHours(12, 0, 0, 0);
+
+      await scheduleCarousel(draggedCarouselId, scheduledDate);
+
+      // Optional: Show success feedback
+      console.log(`Carousel scheduled for ${scheduledDate.toLocaleDateString()}`);
+    } catch (error) {
+      console.error('Error scheduling carousel:', error);
+      alert('Failed to schedule carousel. Please try again.');
+    } finally {
+      setDraggedCarouselId(null);
+    }
+  };
 
   const handleCarouselClick = async (carousel: Carousel) => {
     try {
@@ -342,9 +425,25 @@ export default function Dashboard() {
           <section className="mb-8">
             <div className="sf-card border border-charcoal/40 bg-surface-alt/90 p-6 shadow-soft">
               <div className="flex items-center justify-between mb-4 gap-2">
-                <div>
-                  <p className="text-[11px] tracking-[0.3em] uppercase text-vanilla/50">This week</p>
-                  <h3 className="text-lg font-semibold text-vanilla">Weekly view</h3>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={prevWeek}
+                    className="p-2 rounded-lg bg-surface hover:bg-surface-alt text-vanilla/80 hover:text-vanilla transition-colors"
+                    aria-label="Previous week"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <div>
+                    <p className="text-[11px] tracking-[0.3em] uppercase text-vanilla/50">Schedule</p>
+                    <h3 className="text-lg font-semibold text-vanilla">Weekly view</h3>
+                  </div>
+                  <button
+                    onClick={nextWeek}
+                    className="p-2 rounded-lg bg-surface hover:bg-surface-alt text-vanilla/80 hover:text-vanilla transition-colors"
+                    aria-label="Next week"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
                 <span className="text-xs text-vanilla/60">{weekRangeLabel}</span>
               </div>
@@ -356,18 +455,37 @@ export default function Dashboard() {
                         {day.letter}
                       </span>
                       <div
-                        className={`w-full aspect-square rounded-lg border transition ${
-                          day.isToday
-                            ? 'border-pacific bg-pacific/20 text-white'
+                        onDragOver={handleDragOver(day.id)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop(day)}
+                        className={`w-full aspect-square rounded-lg border transition-all relative ${
+                          dragOverDayId === day.id
+                            ? 'border-pacific bg-pacific/20 scale-105'
+                            : day.isToday
+                            ? 'border-pacific bg-pacific/10 text-white'
                             : 'border-charcoal/50 bg-surface text-vanilla/80'
-                        } flex items-center justify-center font-semibold text-lg`}
+                        } flex flex-col items-center justify-center font-semibold text-lg`}
                       >
-                        {day.date}
+                        <span>{day.date}</span>
+                        {day.scheduledCarousels.length > 0 && (
+                          <div className="absolute bottom-1 flex gap-0.5">
+                            {day.scheduledCarousels.slice(0, 3).map((_, idx) => (
+                              <div
+                                key={idx}
+                                className="w-1.5 h-1.5 rounded-full bg-pacific"
+                                title={`${day.scheduledCarousels.length} scheduled`}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
+              <p className="text-xs text-vanilla/50 mt-4 text-center">
+                💡 Drag any carousel from below onto a date to schedule it
+              </p>
             </div>
           </section>
           {/* Carousels Grid */}
@@ -391,9 +509,23 @@ export default function Dashboard() {
                 return { ...prev, [carousel.id]: Math.min(slides.length - 1, current + 1) };
               });
             };
+            const isScheduled = carousel.posting_status === 'scheduled' && carousel.scheduled_at;
+            const scheduledDate = isScheduled ? new Date(carousel.scheduled_at!) : null;
+            const isDragging = draggedCarouselId === carousel.id;
+
             return (
-              <div key={carousel.id} className="sf-card overflow-hidden transition-transform hover:-translate-y-0.5 text-sm w-full max-w-[14rem]">
-                <div 
+              <div
+                key={carousel.id}
+                draggable
+                onDragStart={handleDragStart(carousel.id)}
+                onDragEnd={handleDragEnd}
+                className={`sf-card overflow-hidden transition-all text-sm w-full max-w-[14rem] ${
+                  isDragging
+                    ? 'opacity-50 cursor-grabbing scale-95'
+                    : 'hover:-translate-y-0.5 cursor-grab active:cursor-grabbing'
+                }`}
+              >
+                <div
                   className="w-full aspect-square bg-surface border-b border-charcoal/40 relative cursor-pointer"
                   onClick={() => handleCarouselClick(carousel)}
                 >
@@ -468,13 +600,20 @@ export default function Dashboard() {
                     </h3>
                   )}
                   <p className="text-vanilla/80 text-xs mb-3 line-clamp-2">{carousel.caption || carousel.description}</p>
-                  
+
                   <div className="flex items-center justify-between text-xs text-vanilla/70 mb-3">
                     <span className="px-2 py-1 rounded-full bg-surface text-vanilla/80 border border-charcoal/40 capitalize">
                       {carousel.status || carousel.style}
                     </span>
                     <span>{carousel.createdAt}</span>
                   </div>
+
+                  {isScheduled && scheduledDate && (
+                    <div className="flex items-center gap-1.5 text-xs text-pacific mb-3 bg-pacific/10 px-2 py-1.5 rounded-lg border border-pacific/30">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>Scheduled: {scheduledDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    </div>
+                  )}
                   
                   <div className="flex space-x-2 text-xs">
                     <button 

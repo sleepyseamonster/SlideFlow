@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { fetchUserCarousels, fetchCarouselWithSlides, deleteCarousel as dbDeleteCarousel } from '../lib/database';
+import { supabase } from '../lib/supabase';
 
 export interface CarouselSlide {
   id: string;
@@ -21,6 +22,8 @@ export interface Carousel {
   createdAt: string;
   style: 'minimalist' | 'bold' | 'elegant';
   status?: string;
+  scheduled_at?: string | null;
+  posting_status?: 'draft' | 'scheduled' | 'posted' | 'failed';
 }
 
 interface CarouselContextType {
@@ -34,6 +37,7 @@ interface CarouselContextType {
   refreshCarousels: () => Promise<void>;
   fetchCarousel: (id: string) => Promise<Carousel | null>;
   updateCarousel: (id: string, updates: { title?: string; caption?: string | null; status?: string }) => Promise<Carousel | null>;
+  scheduleCarousel: (id: string, date: Date) => Promise<void>;
 }
 
 const CarouselContext = createContext<CarouselContextType | undefined>(undefined);
@@ -77,7 +81,9 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
         slides: [], // Will be loaded when needed
         createdAt: new Date(dbCarousel.created_at).toLocaleDateString(),
         style: 'minimalist' as const, // Default style
-        status: dbCarousel.status
+        status: dbCarousel.status,
+        scheduled_at: dbCarousel.scheduled_at || null,
+        posting_status: dbCarousel.posting_status || 'draft'
       }));
       
       setCarousels(transformedCarousels);
@@ -110,6 +116,8 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
         createdAt: new Date(carouselData.created_at).toLocaleDateString(),
         style: 'minimalist' as const,
         status: carouselData.status,
+        scheduled_at: carouselData.scheduled_at || null,
+        posting_status: carouselData.posting_status || 'draft',
         slides: carouselData.slides.map(slide => ({
           id: slide.id,
           image: slide.image,
@@ -235,6 +243,58 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
     }
   };
 
+  const scheduleCarousel = useCallback(async (id: string, date: Date) => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Store the original carousel state for rollback
+    const originalCarousel = carousels.find(c => c.id === id);
+    if (!originalCarousel) {
+      throw new Error('Carousel not found');
+    }
+
+    // Optimistically update local state
+    setCarousels(prev =>
+      prev.map(carousel =>
+        carousel.id === id
+          ? {
+              ...carousel,
+              scheduled_at: date.toISOString(),
+              posting_status: 'scheduled' as const
+            }
+          : carousel
+      )
+    );
+
+    try {
+      // Update in database
+      const { error } = await supabase
+        .from('carousel')
+        .update({
+          scheduled_at: date.toISOString(),
+          posting_status: 'scheduled'
+        })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error scheduling carousel:', error);
+
+      // Rollback optimistic update
+      setCarousels(prev =>
+        prev.map(carousel =>
+          carousel.id === id ? originalCarousel : carousel
+        )
+      );
+
+      throw error;
+    }
+  }, [user, carousels]);
+
   const value = {
     carousels,
     currentCarousel,
@@ -244,9 +304,9 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
     deleteCarousel,
     duplicateCarousel,
     refreshCarousels,
-    fetchCarousel
-    ,
-    updateCarousel
+    fetchCarousel,
+    updateCarousel,
+    scheduleCarousel
   };
 
   return <CarouselContext.Provider value={value}>{children}</CarouselContext.Provider>;
