@@ -20,6 +20,11 @@ Purpose: running, date-stamped notes for changes made locally after cloning the 
 - `ImportLibraryModal`: importing remote library items now fetches and rehydrates them as `File` objects; added select-all toggle (with slate styling) in the Media Library header.
 - Created this log under `docs/kirk-updates.md` for ongoing updates.
 
+## 2025-02-06
+- Added Publish page flow: `/publish/:carouselId` route, navigation from Generate Caption “Click” CTA carrying caption/slides, and placeholder `/studio` route for future work.
+- Publish UI: preview carousel (enlarged, square corners), caption box prefilled from Generate Caption (shorter height), destinations/timing controls, readiness block simplified to slides only, and SlideFlow Studio CTA card (now in right column footer).
+- SlideFlow Studio placeholder page updated name to “SlideFlow Studio”; minor copy/styling alignments to match current palette.
+
 ## How to extend this log
 - Add new sections by date (`YYYY-MM-DD`) with bullets for changes, rationale, and any follow-up/TODOs.
 - If you change collaboration workflow (branching, PR rules), append to the “Collaboration & Git hygiene” section rather than overwriting.

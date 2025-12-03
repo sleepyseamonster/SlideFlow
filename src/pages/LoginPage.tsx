@@ -25,8 +25,9 @@ export default function LoginPage() {
       } else {
         setError('Invalid credentials');
       }
-    } catch (err) {
-      setError('Login failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -39,8 +40,9 @@ export default function LoginPage() {
       if (success) {
         navigate('/dashboard');
       }
-    } catch (err) {
-      setError('Facebook login failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Facebook login failed';
+      setError(message);
     } finally {
       setLoading(false);
     }

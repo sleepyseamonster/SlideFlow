@@ -13,7 +13,6 @@ async function verifyStripeSignature(
   secret: string
 ): Promise<boolean> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(payload);
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(secret),

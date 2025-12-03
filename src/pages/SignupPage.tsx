@@ -26,8 +26,9 @@ export default function SignupPage() {
       } else {
         setError('Signup failed');
       }
-    } catch (err) {
-      setError('Signup failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Signup failed';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -40,8 +41,9 @@ export default function SignupPage() {
       if (success) {
         navigate('/dashboard');
       }
-    } catch (err) {
-      setError('Facebook login failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Facebook login failed';
+      setError(message);
     } finally {
       setLoading(false);
     }

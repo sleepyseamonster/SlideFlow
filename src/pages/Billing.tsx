@@ -8,7 +8,6 @@ import {
   Check,
   Crown,
   Calendar,
-  DollarSign,
   AlertCircle,
   Download
 } from 'lucide-react';

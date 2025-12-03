@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { useContentLibrary } from '../contexts/ContentLibraryContext';
+import { useContentLibrary, type LibraryImage } from '../contexts/ContentLibraryContext';
 import { X, Check, Image as ImageIcon } from 'lucide-react';
 
 interface ImportLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (selectedImages: File[]) => void;
+  onImport: (selectedImages: LibraryImage[]) => void;
   maxImages?: number;
   currentImageCount?: number;
 }
@@ -38,18 +38,7 @@ export default function ImportLibraryModal({
   const handleImport = async () => {
     setImporting(true);
     try {
-      const selectedLibraryImages = await Promise.all(
-        images
-          .filter(img => selectedImages.has(img.id))
-          .map(async (img) => {
-            if (img.file) return img.file;
-            // Remote image: fetch and convert to File so it can be re-used in the generator.
-            const res = await fetch(img.url);
-            const blob = await res.blob();
-            return new File([blob], img.name, { type: blob.type || 'application/octet-stream' });
-          })
-      );
-
+      const selectedLibraryImages = images.filter(img => selectedImages.has(img.id));
       onImport(selectedLibraryImages);
       setSelectedImages(new Set());
       onClose();

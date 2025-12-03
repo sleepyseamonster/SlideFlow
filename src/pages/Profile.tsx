@@ -34,8 +34,9 @@ export default function Profile() {
       if (url) {
         window.location.href = url;
       }
-    } catch (err) {
-      alert('Failed to start checkout. Please try again.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to start checkout. Please try again.';
+      alert(message);
     } finally {
       setUpgradingPlan(false);
     }
@@ -57,7 +58,7 @@ export default function Profile() {
     setConnectingInstagram(true);
     try {
       await connectInstagram();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to connect Instagram:', error);
     } finally {
       setConnectingInstagram(false);

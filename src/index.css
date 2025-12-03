@@ -90,6 +90,10 @@
     mix-blend-mode: screen;
     pointer-events: none;
   }
+
+  .sf-arrow-wiggle {
+    animation: sf-arrow-wiggle 1.4s ease-in-out infinite;
+  }
 }
 
 @keyframes shimmer {
@@ -117,5 +121,14 @@
   }
   100% {
     transform: translateX(-170%);
+  }
+}
+
+@keyframes sf-arrow-wiggle {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-6px);
   }
 }

@@ -6,15 +6,13 @@ import Navbar from '../components/Navbar';
 import CircularGalleryDemo from '../components/CircularGalleryDemo';
 import { SparklesText } from '../components/ui/sparkles-text';
 import {
-  ArrowRight,
   ImagePlus,
   Sparkles,
   Download,
   Zap,
   Instagram,
   CalendarClock,
-  Palette,
-  CircleSlash
+  Palette
 } from 'lucide-react';
 
 export default function LandingPage() {
@@ -41,9 +39,10 @@ export default function LandingPage() {
       } else {
         alert('No checkout URL received. Please try again.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
       console.error('Unexpected error:', err);
-      alert(`Failed to start checkout: ${err.message}`);
+      alert(`Failed to start checkout: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -69,62 +68,6 @@ export default function LandingPage() {
       title: 'Post or schedule',
       description: 'Publish to Instagram instantly or pick a time on your calendar.',
       icon: <CalendarClock className="h-5 w-5" />,
-    },
-  ];
-
-  const useCases = [
-    {
-      title: 'The Busy Creator',
-      benefit: 'Post consistently without opening design software—focus on ideas, not layouts.'
-    },
-    {
-      title: 'Small Business Owner',
-      benefit: 'Share product drops and offers without hiring a designer.'
-    },
-    {
-      title: 'Coach or Consultant',
-      benefit: 'Teach through clean, structured carousels with AI-written captions.'
-    },
-    {
-      title: 'Social Media Manager / Agency',
-      benefit: 'Ship multiple client carousels weekly with a repeatable, on-brand flow.'
-    },
-    {
-      title: 'Marketer',
-      benefit: 'Test hooks and angles fast—SlideFlow assembles, captions, and schedules.'
-    },
-  ];
-
-  const features = [
-    {
-      title: 'Drag-and-Drop Story Builder',
-      description: 'Turn any idea into a clean carousel by arranging slides in seconds.',
-      icon: <Zap className="h-5 w-5" />,
-    },
-    {
-      title: 'AI-Written, Scroll-Stopping Captions',
-      description: 'Give SlideFlow a prompt and get captions tailored to your images.',
-      icon: <Sparkles className="h-5 w-5" />,
-    },
-    {
-      title: 'Save Your Brand Colors & Fonts',
-      description: 'Consistency without effort—your brand identity applies automatically.',
-      icon: <Palette className="h-5 w-5" />,
-    },
-    {
-      title: 'Direct Instagram Posting',
-      description: 'Publish carousels instantly once you approve the flow.',
-      icon: <Instagram className="h-5 w-5" />,
-    },
-    {
-      title: 'Scheduling for Consistency',
-      description: 'Plan ahead with a built-in posting calendar and stay on track.',
-      icon: <CalendarClock className="h-5 w-5" />,
-    },
-    {
-      title: 'No Design Tools Needed',
-      description: 'SlideFlow is not a graphics tool or image editor—it keeps creation fast.',
-      icon: <CircleSlash className="h-5 w-5" />,
     },
   ];
 

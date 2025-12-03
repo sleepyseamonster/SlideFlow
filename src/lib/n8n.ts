@@ -1,6 +1,6 @@
 const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/n8n-proxy`;
 
-export async function n8nPost<T = any>(path: string, body: unknown) {
+export async function n8nPost<T = unknown>(path: string, body: unknown) {
   try {
     const res = await fetch(PROXY_URL, {
       method: "POST",
@@ -21,13 +21,13 @@ export async function n8nPost<T = any>(path: string, body: unknown) {
     }
 
     return res.json() as Promise<T>;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('n8n request error:', error);
     throw error;
   }
 }
 
-export async function n8nGet<T = any>(path: string, params?: Record<string,string>) {
+export async function n8nGet<T = unknown>(path: string, params?: Record<string,string>) {
   try {
     let fullPath = path;
     if (params) {
@@ -53,7 +53,7 @@ export async function n8nGet<T = any>(path: string, params?: Record<string,strin
     }
 
     return res.json() as Promise<T>;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('n8n request error:', error);
     throw error;
   }

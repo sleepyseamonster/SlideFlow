@@ -21,6 +21,7 @@ export interface UploadedFileInfo {
   mime_type?: string;
   size_bytes?: number;
   created_at?: string;
+  is_library?: boolean;
 }
 
 const parseOriginalName = (file: UploadedFileInfo) => {
@@ -36,7 +37,7 @@ interface ContentLibraryContextType {
   addImages: (files: File[]) => void;
   addUploadedFiles: (uploaded: UploadedFileInfo[]) => Promise<void>;
   refreshLibrary: () => Promise<void>;
-  removeImage: (id: string) => void;
+  removeImage: (id: string) => Promise<void>;
   clearLibrary: () => void;
   loading: boolean;
 }
@@ -67,62 +68,35 @@ export function ContentLibraryProvider({ children }: ContentLibraryProviderProps
       return;
     }
 
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      setImages([]);
+      return;
+    }
+
     setLoading(true);
     try {
-      const storage = supabase.storage.from('media');
+      // Pull only library media rows for this user.
+      const { data: mediaRows, error: mediaError } = await supabase
+        .from('media')
+        .select('id, bucket, path, filename, mime_type, size_bytes, created_at')
+        .eq('is_library', true)
+        .order('created_at', { ascending: false });
+      if (mediaError) throw mediaError;
 
-      // Helper to list files recursively under a prefix.
-      const listFiles = async (prefix: string): Promise<UploadedFileInfo[]> => {
-        const { data, error } = await storage.list(prefix, { limit: 100, offset: 0, sortBy: { column: 'created_at', order: 'desc' } });
-        if (error) throw error;
-        const results: UploadedFileInfo[] = [];
-
-        for (const entry of data || []) {
-          // Skip hidden/system placeholder files
-          if (entry.name.startsWith('.')) continue;
-          const fullPath = prefix ? `${prefix}/${entry.name}` : entry.name;
-
-          // Folder entries have metadata === null; recurse into them.
-          if (!entry.metadata) {
-            const nested = await listFiles(fullPath);
-            results.push(...nested);
-            continue;
-          }
-
-          results.push({
-            path: fullPath,
-            bucket: 'media',
-            filename: entry.name,
-            size_bytes: entry.metadata.size,
-            created_at: entry.created_at ?? entry.updated_at ?? new Date().toISOString()
-          });
-        }
-
-        return results;
-      };
-
-      const prefixes = [user.id, `user_${user.id}`];
-      const uploaded = (
-        await Promise.all(prefixes.map(prefix => listFiles(prefix)))
-      ).flat();
-
-      // Deduplicate by path in case both prefixes exist.
-      const uniqueByPath = new Map(uploaded.map((f) => [f.path, f]));
-
-      const uploadedFiles = Array.from(uniqueByPath.values());
-
-      if (uploadedFiles.length === 0) {
+      if (!mediaRows || mediaRows.length === 0) {
         setImages(prev => prev.filter(img => img.source === 'local'));
         return;
       }
 
+      const storage = supabase.storage.from('media');
       const { data: signedUrls, error: signedError } = await storage.createSignedUrls(
-        uploadedFiles.map((f) => f.path),
+        mediaRows.map((f) => f.path),
         60 * 60 // 1 hour
       );
       if (signedError) throw signedError;
 
-      const newImages: LibraryImage[] = uploadedFiles.map((file, idx) => ({
+      const newImages: LibraryImage[] = mediaRows.map((file, idx) => ({
         id: file.path,
         url: signedUrls?.[idx]?.signedUrl || '',
         name: parseOriginalName(file),
@@ -167,15 +141,22 @@ export function ContentLibraryProvider({ children }: ContentLibraryProviderProps
   // Add files that were uploaded to Supabase (expects bucket/path info).
   const addUploadedFiles = async (uploaded: UploadedFileInfo[]) => {
     if (!uploaded.length) return;
+    // Only accept items that are explicitly flagged as library assets
+    const libraryOnly = uploaded.filter((f) => f.is_library);
+    if (!libraryOnly.length) return;
+
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) return;
+
     const storage = supabase.storage.from('media');
     try {
       const { data: signedUrls, error } = await storage.createSignedUrls(
-        uploaded.map((f) => f.path),
+        libraryOnly.map((f) => f.path),
         60 * 60
       );
       if (error) throw error;
 
-      const newImages: LibraryImage[] = uploaded.map((file, idx) => ({
+      const newImages: LibraryImage[] = libraryOnly.map((file, idx) => ({
         id: file.path,
         url: signedUrls?.[idx]?.signedUrl || '',
         name: parseOriginalName(file),
@@ -187,7 +168,6 @@ export function ContentLibraryProvider({ children }: ContentLibraryProviderProps
       }));
 
       setImages(prev => {
-        // Avoid duplicates based on path.
         const existing = new Set(prev.map(img => img.id));
         const merged = [...prev];
         newImages.forEach(img => {
@@ -200,20 +180,53 @@ export function ContentLibraryProvider({ children }: ContentLibraryProviderProps
     }
   };
 
-  const removeImage = (id: string) => {
-    setImages(prev => {
-      const imageToRemove = prev.find(img => img.id === id);
-      if (imageToRemove) {
-        if (imageToRemove.source === 'local') {
-          URL.revokeObjectURL(imageToRemove.url);
-        } else if (imageToRemove.path) {
-          supabase.storage.from('media').remove([imageToRemove.path]).catch((err) => {
-            console.error('Failed to remove image from storage:', err);
-          });
-        }
+  const removeImage = async (id: string) => {
+    const imageToRemove = images.find((img) => img.id === id);
+    if (!imageToRemove) return;
+
+    // Revoke local previews immediately.
+    if (imageToRemove.source === 'local') {
+      URL.revokeObjectURL(imageToRemove.url);
+      setImages((prev) => prev.filter((img) => img.id !== id));
+      return;
+    }
+
+    const path = imageToRemove.path;
+    const bucket = imageToRemove.bucket || 'media';
+    if (!path) {
+      setImages((prev) => prev.filter((img) => img.id !== id));
+      return;
+    }
+
+    try {
+      // Ensure session for storage/table RLS.
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) {
+        console.warn('No Supabase session available; cannot delete image.');
+        return;
       }
-      return prev.filter(img => img.id !== id);
-    });
+      try {
+        await supabase.auth.setSession({
+          access_token: session.data.session.access_token,
+          refresh_token: session.data.session.refresh_token ?? '',
+        });
+      } catch (err) {
+        console.warn('Failed to refresh Supabase session before delete:', err);
+      }
+
+      const storage = supabase.storage.from(bucket);
+      await storage.remove([path]);
+
+      await supabase
+        .from('media')
+        .delete()
+        .eq('path', path)
+        .eq('user_id', user?.id || '');
+    } catch (err) {
+      console.error('Failed to remove image from storage/table:', err);
+    } finally {
+      setImages((prev) => prev.filter((img) => img.id !== id));
+    }
   };
 
   const clearLibrary = () => {

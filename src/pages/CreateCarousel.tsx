@@ -16,10 +16,13 @@ const BUCKET_NAME = "media";
 const ASPECT = "1080x1350";
 const MAX_FILES = 10;
 
+type IngestResponse = { media_id: string };
+type BrandProfileResponse = { brand_profile_id: string };
+type CarouselResponse = { carousel_id: string };
+
 // Upload one file to Supabase
 async function uploadOne(userId: string, file: File) {
-  const ext = file.name.split(".").pop() || "bin";
-  const safeName = file.name.replace(/[^\w.\-]/g, "_");
+  const safeName = file.name.replace(/[^\w.-]/g, "_");
   const ts = Date.now();
   const path = `user_${userId}/${new Date().toISOString().slice(0,10)}/${ts}_${crypto.randomUUID()}_${safeName}`;
 
@@ -91,7 +94,7 @@ export default function CreateCarousel() {
       // ingest + derivatives
       const mediaIds: string[] = [];
       for (const info of uploadedInfos) {
-        const ing: any = await n8nPost("/ingest", info);
+        const ing = await n8nPost<IngestResponse>("/ingest", info);
         mediaIds.push(ing.media_id);
 
         await n8nPost("/derivatives", {
@@ -101,7 +104,7 @@ export default function CreateCarousel() {
       }
 
       // brand profile
-      const brand: any = await n8nPost("/brand_profile", {
+      const brand = await n8nPost<BrandProfileResponse>("/brand_profile", {
         palette: { 
           primary: customColors.primary, 
           secondary: customColors.secondary, 
@@ -113,7 +116,7 @@ export default function CreateCarousel() {
       });
 
       // carousel
-      const carousel: any = await n8nPost("/carousel", {
+      const carousel = await n8nPost<CarouselResponse>("/carousel", {
         title: message || "Untitled Carousel",
         aspect: ASPECT,
         brand_profile_id: brand.brand_profile_id
@@ -132,9 +135,10 @@ export default function CreateCarousel() {
 
       alert("Carousel created! Check your dashboard.");
       navigate('/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong.';
       console.error(err);
-      alert(err.message || "Something went wrong.");
+      alert(message);
     } finally {
       setGenerating(false);
     }

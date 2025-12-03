@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useContentLibrary } from '../contexts/ContentLibraryContext';
+import { useContentLibrary, type LibraryImage } from '../contexts/ContentLibraryContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Navbar from '../components/Navbar';
@@ -12,24 +12,25 @@ import {
   Download,
   Search,
   Grid3X3,
-  List,
-  Filter
+  List
 } from 'lucide-react';
 
 export default function MediaLibrary() {
-  const { images, addUploadedFiles, removeImage, clearLibrary } = useContentLibrary();
+  const { images, addUploadedFiles, removeImage, refreshLibrary } = useContentLibrary();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const uploadOne = async (userId: string, file: File) => {
-    const ext = file.name.split('.').pop() || 'bin';
-    const safeName = file.name.replace(/[^\w.\-]/g, '_');
+    const safeName = file.name.replace(/[^\w.-]/g, '_');
     const ts = Date.now();
+    // Storage policy expects first folder = user_<auth.uid()>
     const path = `user_${userId}/${new Date().toISOString().slice(0,10)}/${ts}_${crypto.randomUUID()}_${safeName}`;
+    const filename = path.split('/').pop() || safeName;
 
     const { error } = await supabase.storage
       .from('media')
@@ -40,7 +41,7 @@ export default function MediaLibrary() {
     return {
       bucket: 'media',
       path,
-      filename: file.name,
+      filename,
       mime_type: file.type || 'application/octet-stream',
       size_bytes: file.size,
       created_at: new Date().toISOString()
@@ -59,14 +60,40 @@ export default function MediaLibrary() {
       alert('Your session expired. Please log back in to upload.');
       return;
     }
+    // ensure supabase client is using the current session for RLS + storage
+    try {
+      await supabase.auth.setSession({
+        access_token: session.data.session.access_token,
+        refresh_token: session.data.session.refresh_token ?? "",
+      });
+    } catch (err) {
+      console.error('Failed to set supabase session before upload:', err);
+    }
 
     setUploading(true);
     try {
       const uploadedInfos = await Promise.all(files.map(file => uploadOne(user.id, file)));
-      await addUploadedFiles(uploadedInfos);
-    } catch (err: any) {
+      // Persist into media table as library assets
+      const rows = uploadedInfos.map((info) => ({
+        user_id: user.id,
+        bucket: info.bucket,
+        path: info.path,
+        filename: info.filename || info.path.split('/').pop() || 'file',
+        mime_type: info.mime_type || 'application/octet-stream',
+        size_bytes: info.size_bytes || 0,
+        media_type: 'image',
+        visibility: 'private',
+        is_library: true,
+      }));
+      const { error } = await supabase.from('media').insert(rows);
+      if (error) throw error;
+      await addUploadedFiles(
+        uploadedInfos.map((u) => ({ ...u, is_library: true }))
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Upload failed. Please try again.';
       console.error('Failed to upload images:', err);
-      alert(err?.message || 'Upload failed. Please try again.');
+      alert(message);
     } finally {
       setUploading(false);
     }
@@ -113,16 +140,43 @@ export default function MediaLibrary() {
     setSelectedImages(newSelected);
   };
 
-  const handleBulkDelete = () => {
-    if (selectedImages.size === 0) return;
-    
-    if (confirm(`Delete ${selectedImages.size} selected images?`)) {
-      selectedImages.forEach(imageId => removeImage(imageId));
+  const handleBulkDelete = async () => {
+    if (selectedImages.size === 0 || deleting) return;
+
+    const confirmMessage = `Delete ${selectedImages.size} selected image${selectedImages.size === 1 ? '' : 's'}?`;
+    const confirmed = typeof window !== 'undefined' ? window.confirm(confirmMessage) : true;
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) {
+        alert('Please log in again before deleting images.');
+        return;
+      }
+      try {
+        await supabase.auth.setSession({
+          access_token: session.data.session.access_token,
+          refresh_token: session.data.session.refresh_token ?? '',
+        });
+      } catch (err) {
+        console.warn('Failed to refresh Supabase session before delete:', err);
+      }
+
+      const ids = Array.from(selectedImages);
+      await Promise.all(ids.map((imageId) => removeImage(imageId)));
       setSelectedImages(new Set());
+      await refreshLibrary();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Delete failed. Please try again.';
+      console.error('Bulk delete failed:', err);
+      alert(message);
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const handleDownloadImage = (image: any) => {
+  const handleDownloadImage = (image: LibraryImage) => {
     const link = document.createElement('a');
     link.href = image.url;
     link.download = image.name;
@@ -198,10 +252,16 @@ export default function MediaLibrary() {
                 {selectedImages.size > 0 && (
                   <button
                     onClick={handleBulkDelete}
-                    className="inline-flex items-center px-3 py-2 bg-surface-alt hover:bg-surface text-red-400 rounded-lg transition-colors border border-red-400/30"
+                    type="button"
+                    disabled={deleting}
+                    className={`inline-flex items-center px-3 py-2 rounded-lg transition-colors border ${
+                      deleting
+                        ? 'bg-surface text-red-300 border-red-400/30 cursor-not-allowed'
+                        : 'bg-surface-alt hover:bg-surface text-red-400 border-red-400/30'
+                    }`}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete ({selectedImages.size})
+                    {deleting ? 'Deleting…' : `Delete (${selectedImages.size})`}
                   </button>
                 )}
                 <div className="flex bg-surface-alt rounded-lg p-1 border border-charcoal/50">

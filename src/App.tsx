@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import Dashboard from './pages/Dashboard';
 import SlideBoard from './pages/SlideBoard';
-import Results from './pages/Results';
+import GenerateCaption from './pages/GenerateCaption';
+import Publish from './pages/Publish';
 import Profile from './pages/Profile';
 import Billing from './pages/Billing';
 import MediaLibrary from './pages/MediaLibrary';
+import BrandProfile from './pages/BrandProfile';
+import SlideFlowStudio from './pages/SlideFlowStudio';
 import { CarouselProvider } from './contexts/CarouselContext';
 import { ContentLibraryProvider } from './contexts/ContentLibraryContext';
 
@@ -25,6 +28,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   
   return user ? <>{children}</> : <Navigate to="/login" />;
+}
+
+function LegacyResultsRedirect() {
+  const { carouselId } = useParams<{ carouselId?: string }>();
+  return (
+    <Navigate
+      to={carouselId ? `/generate-caption/${carouselId}` : '/dashboard'}
+      replace
+    />
+  );
 }
 
 function App() {
@@ -49,14 +62,31 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/generate" element={<Navigate to="/slideboard" replace />} />
-                <Route path="/results" element={
+                <Route path="/generate-caption/:carouselId" element={
                   <ProtectedRoute>
-                    <Results />
+                    <GenerateCaption />
                   </ProtectedRoute>
                 } />
+                <Route path="/publish/:carouselId" element={
+                  <ProtectedRoute>
+                    <Publish />
+                  </ProtectedRoute>
+                } />
+                <Route path="/studio" element={
+                  <ProtectedRoute>
+                    <SlideFlowStudio />
+                  </ProtectedRoute>
+                } />
+                <Route path="/results/:carouselId" element={<LegacyResultsRedirect />} />
+                <Route path="/results" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/profile" element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/brand-profile" element={
+                  <ProtectedRoute>
+                    <BrandProfile />
                   </ProtectedRoute>
                 } />
                 <Route path="/billing" element={
