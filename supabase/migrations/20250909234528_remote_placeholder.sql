@@ -1,0 +1,2 @@
+-- Placeholder migration to align with remote applied version 20250909234528.
+-- No-op.

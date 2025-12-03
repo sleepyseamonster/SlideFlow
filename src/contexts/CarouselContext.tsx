@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { fetchUserCarousels, fetchCarouselWithSlides, deleteCarousel as dbDeleteCarousel } from '../lib/database';
 
@@ -7,14 +7,16 @@ export interface CarouselSlide {
   image: string;
   caption: string;
   design?: 'minimalist' | 'bold' | 'elegant';
-  originalMedia?: any;
-  derivatives?: any[];
+  position?: number;
+  originalMedia?: Record<string, unknown> | null;
+  derivatives?: Array<Record<string, unknown>>;
 }
 
 export interface Carousel {
   id: string;
   title: string;
-  description: string;
+  caption: string;
+  description?: string;
   slides: CarouselSlide[];
   createdAt: string;
   style: 'minimalist' | 'bold' | 'elegant';
@@ -31,6 +33,7 @@ interface CarouselContextType {
   duplicateCarousel: (id: string) => void;
   refreshCarousels: () => Promise<void>;
   fetchCarousel: (id: string) => Promise<Carousel | null>;
+  updateCarousel: (id: string, updates: { title?: string; caption?: string | null; status?: string }) => Promise<Carousel | null>;
 }
 
 const CarouselContext = createContext<CarouselContextType | undefined>(undefined);
@@ -54,7 +57,7 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
   const { user } = useAuth();
 
   // Load carousels from database
-  const refreshCarousels = async () => {
+  const refreshCarousels = useCallback(async () => {
     if (!user) {
       setCarousels([]);
       setLoading(false);
@@ -69,7 +72,8 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
       const transformedCarousels: Carousel[] = dbCarousels.map(dbCarousel => ({
         id: dbCarousel.id,
         title: dbCarousel.title,
-        description: dbCarousel.title, // Using title as description for now
+        caption: dbCarousel.caption || '',
+        description: dbCarousel.title,
         slides: [], // Will be loaded when needed
         createdAt: new Date(dbCarousel.created_at).toLocaleDateString(),
         style: 'minimalist' as const, // Default style
@@ -83,15 +87,15 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   // Load carousels when user changes
   React.useEffect(() => {
     refreshCarousels();
-  }, [user]);
+  }, [refreshCarousels]);
 
   // Fetch a specific carousel with all its data
-  const fetchCarousel = async (id: string): Promise<Carousel | null> => {
+  const fetchCarousel = useCallback(async (id: string): Promise<Carousel | null> => {
     if (!user) return null;
 
     try {
@@ -101,6 +105,7 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
       const transformedCarousel: Carousel = {
         id: carouselData.id,
         title: carouselData.title,
+        caption: carouselData.caption || '',
         description: carouselData.title,
         createdAt: new Date(carouselData.created_at).toLocaleDateString(),
         style: 'minimalist' as const,
@@ -119,7 +124,80 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
       console.error('Error fetching carousel:', error);
       return null;
     }
-  };
+  }, [user]);
+  const updateCarousel = useCallback(
+    async (id: string, updates: { title?: string; caption?: string | null; status?: string }) => {
+      if (!user) return null;
+      try {
+        const session = await supabase.auth.getSession();
+        if (!session.data.session) {
+          throw new Error('Session expired');
+        }
+
+        const sessionData = session.data.session;
+        await supabase.auth.setSession({
+          access_token: sessionData.access_token,
+          refresh_token: sessionData.refresh_token ?? '',
+        });
+
+        const { data, error } = await supabase
+          .from('carousel')
+          .update(updates)
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .select('*')
+          .single();
+
+        if (error || !data) {
+          throw error || new Error('Failed to update carousel');
+        }
+
+        setCarousels((prev) =>
+          prev.map((carousel) =>
+            carousel.id === data.id
+              ? {
+                  ...carousel,
+                  title: data.title,
+                  caption: data.caption || carousel.caption,
+                  description: data.title,
+                  createdAt: new Date(data.created_at).toLocaleDateString(),
+                  status: data.status,
+                }
+              : carousel
+          )
+        );
+
+        if (currentCarousel?.id === data.id) {
+          setCurrentCarousel((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              title: data.title,
+              caption: data.caption || prev.caption,
+              description: data.title,
+              status: data.status,
+            };
+          });
+        }
+
+        return {
+          ...data,
+          title: data.title,
+          caption: data.caption || '',
+          description: data.title,
+          slides: currentCarousel?.id === data.id ? currentCarousel.slides : [],
+          createdAt: new Date(data.created_at).toLocaleDateString(),
+          style: 'minimalist',
+          status: data.status,
+        };
+      } catch (error) {
+        console.error('Error updating carousel:', error);
+        return null;
+      }
+    },
+    [user, currentCarousel]
+  );
+
   const addCarousel = (carousel: Carousel) => {
     setCarousels(prev => [...prev, carousel]);
   };
@@ -150,6 +228,7 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
         ...carousel,
         id: Date.now().toString(),
         title: `${carousel.title} (Copy)`,
+        caption: carousel.caption,
         createdAt: new Date().toISOString().split('T')[0]
       };
       addCarousel(duplicate);
@@ -166,6 +245,8 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
     duplicateCarousel,
     refreshCarousels,
     fetchCarousel
+    ,
+    updateCarousel
   };
 
   return <CarouselContext.Provider value={value}>{children}</CarouselContext.Provider>;

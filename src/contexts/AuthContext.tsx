@@ -112,7 +112,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const loginWithFacebook = async (): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
@@ -134,7 +134,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const connectInstagram = async (): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,

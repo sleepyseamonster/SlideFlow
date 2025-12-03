@@ -1,7 +1,3 @@
-interface InstagramCarouselItem {
-  imageUrl: string;
-}
-
 interface InstagramPostParams {
   accessToken: string;
   instagramBusinessAccountId: string;
@@ -89,11 +85,12 @@ export async function postCarouselToInstagram({
       success: true,
       postId: publishData.id,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to post to Instagram';
     console.error('Instagram posting error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to post to Instagram',
+      error: message,
     };
   }
 }
@@ -137,7 +134,7 @@ export async function getInstagramBusinessAccounts(
     }
 
     return accounts;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Failed to fetch Instagram accounts:', error);
     return [];
   }

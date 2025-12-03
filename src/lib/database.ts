@@ -6,6 +6,7 @@ export interface DatabaseCarousel {
   title: string;
   aspect: string;
   status: string;
+  caption?: string | null;
   caption_id?: string;
   created_at: string;
   updated_at: string;
@@ -18,8 +19,8 @@ export interface DatabaseCarouselSlide {
   position: number;
   media_id: string;
   type_code: string;
-  overlay?: any;
-  text?: any;
+  overlay?: Record<string, unknown> | null;
+  text?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -92,49 +93,63 @@ export async function fetchCarouselWithSlides(carouselId: string, userId: string
     throw slidesError;
   }
 
-  // For each slide, fetch the media and its derivatives
+  // For each slide, fetch the media and its derivatives. Be resilient: if media is missing,
+  // return a placeholder slide instead of throwing.
   const slidesWithMedia = await Promise.all(
     (slides || []).map(async (slide) => {
-      // Fetch original media
-      const { data: media, error: mediaError } = await supabase
-        .from('media')
-        .select('*')
-        .eq('id', slide.media_id)
-        .eq('user_id', userId)
-        .single();
+      try {
+        // Fetch original media
+        const { data: media, error: mediaError } = await supabase
+          .from('media')
+          .select('*')
+          .eq('id', slide.media_id)
+          .eq('user_id', userId)
+          .single();
 
-      if (mediaError) {
-        console.error('Error fetching media:', mediaError);
-        throw mediaError;
+        if (mediaError || !media) {
+          console.warn('Missing media for slide', slide.id, mediaError);
+          return { ...slide, image: '', originalMedia: null, derivatives: [] };
+        }
+
+        // Fetch derivatives (generated images)
+        const { data: derivatives, error: derivativesError } = await supabase
+          .from('media_derivative')
+          .select('*')
+          .eq('media_id', slide.media_id)
+          .eq('user_id', userId);
+
+        if (derivativesError) {
+          console.warn('Error fetching derivatives for slide', slide.id, derivativesError);
+        }
+
+        // Get the square derivative for display (or fall back to original)
+        const squareDerivative = derivatives?.find(d => d.type_code === 'square');
+        const imageToUse = squareDerivative || media;
+
+        // Generate a signed URL for private media; fall back to public URL if signing fails.
+        let signedUrl = '';
+        const { data: signed, error: signedError } = await supabase.storage
+          .from(imageToUse.bucket)
+          .createSignedUrl(imageToUse.path, 60 * 60);
+        if (signedError) {
+          console.warn('Error creating signed URL, falling back to public URL:', signedError);
+          const publicUrl = supabase.storage.from(imageToUse.bucket).getPublicUrl(imageToUse.path);
+          signedUrl = publicUrl.data.publicUrl;
+        } else {
+          signedUrl = signed?.signedUrl || '';
+        }
+
+        return {
+          ...slide,
+          image: signedUrl,
+          position: slide.position,
+          originalMedia: media,
+          derivatives: derivatives || []
+        };
+      } catch (err) {
+        console.error('Failed to build slide with media', slide.id, err);
+        return { ...slide, image: '', originalMedia: null, derivatives: [] };
       }
-
-      // Fetch derivatives (generated images)
-      const { data: derivatives, error: derivativesError } = await supabase
-        .from('media_derivative')
-        .select('*')
-        .eq('media_id', slide.media_id)
-        .eq('user_id', userId);
-
-      if (derivativesError) {
-        console.error('Error fetching derivatives:', derivativesError);
-        throw derivativesError;
-      }
-
-      // Get the square derivative for display (or fall back to original)
-      const squareDerivative = derivatives?.find(d => d.type_code === 'square');
-      const imageToUse = squareDerivative || media;
-
-      // Generate the public URL
-      const imageUrl = supabase.storage
-        .from(imageToUse.bucket)
-        .getPublicUrl(imageToUse.path);
-
-      return {
-        ...slide,
-        image: imageUrl.data.publicUrl,
-        originalMedia: media,
-        derivatives: derivatives || []
-      };
     })
   );
 

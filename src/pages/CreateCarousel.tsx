@@ -16,11 +16,15 @@ const BUCKET_NAME = "media";
 const ASPECT = "1080x1350";
 const MAX_FILES = 10;
 
+type IngestResponse = { media_id: string };
+type BrandProfileResponse = { brand_profile_id: string };
+type CarouselResponse = { carousel_id: string };
+
 // Upload one file to Supabase
 async function uploadOne(userId: string, file: File) {
-  const ext = file.name.split(".").pop() || "bin";
+  const safeName = file.name.replace(/[^\w.-]/g, "_");
   const ts = Date.now();
-  const path = `user_${userId}/${new Date().toISOString().slice(0,10)}/${ts}_${crypto.randomUUID()}.${ext}`;
+  const path = `user_${userId}/${new Date().toISOString().slice(0,10)}/${ts}_${crypto.randomUUID()}_${safeName}`;
 
   const { error } = await supabase.storage
     .from(BUCKET_NAME)
@@ -90,7 +94,7 @@ export default function CreateCarousel() {
       // ingest + derivatives
       const mediaIds: string[] = [];
       for (const info of uploadedInfos) {
-        const ing: any = await n8nPost("/ingest", info);
+        const ing = await n8nPost<IngestResponse>("/ingest", info);
         mediaIds.push(ing.media_id);
 
         await n8nPost("/derivatives", {
@@ -100,7 +104,7 @@ export default function CreateCarousel() {
       }
 
       // brand profile
-      const brand: any = await n8nPost("/brand_profile", {
+      const brand = await n8nPost<BrandProfileResponse>("/brand_profile", {
         palette: { 
           primary: customColors.primary, 
           secondary: customColors.secondary, 
@@ -112,7 +116,7 @@ export default function CreateCarousel() {
       });
 
       // carousel
-      const carousel: any = await n8nPost("/carousel", {
+      const carousel = await n8nPost<CarouselResponse>("/carousel", {
         title: message || "Untitled Carousel",
         aspect: ASPECT,
         brand_profile_id: brand.brand_profile_id
@@ -131,29 +135,30 @@ export default function CreateCarousel() {
 
       alert("Carousel created! Check your dashboard.");
       navigate('/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong.';
       console.error(err);
-      alert(err.message || "Something went wrong.");
+      alert(message);
     } finally {
       setGenerating(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-ink">
       <Navbar />
       
       <main className="pt-20 pb-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Create Your Carousel</h1>
-            <p className="text-gray-600">Upload images and describe your message to generate a professional carousel</p>
+            <h1 className="text-3xl font-bold text-vanilla mb-4">Create Your Carousel</h1>
+            <p className="text-vanilla/70">Upload images and describe your message to generate a professional carousel</p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm p-8 space-y-8">
+          <div className="bg-surface rounded-lg shadow-sm p-8 space-y-8">
             {/* Image Upload */}
             <div>
-              <label className="block text-lg font-semibold text-gray-900 mb-4">
+              <label className="block text-lg font-semibold text-vanilla mb-4">
                 Upload Images ({images.length}/{MAX_FILES})
               </label>
               
@@ -176,11 +181,11 @@ export default function CreateCarousel() {
               </div>
               
               {images.length === 0 && (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Upload your images</h3>
-                  <p className="text-gray-600 mb-4">Select up to {MAX_FILES} images for your carousel</p>
-                  <label className="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg cursor-pointer hover:bg-indigo-200 transition-colors">
+                <div className="border-2 border-dashed border-charcoal/50 rounded-lg p-8 text-center">
+                  <ImageIcon className="h-12 w-12 text-vanilla/55 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-vanilla mb-2">Upload your images</h3>
+                  <p className="text-vanilla/70 mb-4">Select up to {MAX_FILES} images for your carousel</p>
+                  <label className="inline-flex items-center px-4 py-2 bg-pacific/15 text-pacific rounded-lg cursor-pointer hover:bg-pacific/25 transition-colors">
                     <Upload className="h-4 w-4 mr-2" />
                     Choose Files
                     <input
@@ -198,7 +203,7 @@ export default function CreateCarousel() {
 
             {/* Message Input */}
             <div>
-              <label className="block text-lg font-semibold text-gray-900 mb-4">
+              <label className="block text-lg font-semibold text-vanilla mb-4">
                 Describe Your Message
               </label>
               <textarea
@@ -206,14 +211,14 @@ export default function CreateCarousel() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Describe what you want to communicate with this carousel..."
-                className="w-full h-32 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                className="w-full h-32 px-4 py-3 border border-charcoal/50 rounded-lg focus:ring-2 focus:ring-pacific focus:border-pacific resize-none"
                 maxLength={500}
               />
             </div>
 
             {/* Style Selection */}
             <div>
-              <label className="block text-lg font-semibold text-gray-900 mb-4">
+              <label className="block text-lg font-semibold text-vanilla mb-4">
                 Choose Style
               </label>
               <div className="grid md:grid-cols-3 gap-4">
@@ -224,10 +229,10 @@ export default function CreateCarousel() {
                 ].map((styleOption) => (
                   <label
                     key={styleOption.value}
-                    className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       style === styleOption.value
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-indigo-500 bg-pacific/10'
+                        : 'border-charcoal/50 hover:border-charcoal/50'
                     }`}
                   >
                     <input
@@ -238,8 +243,8 @@ export default function CreateCarousel() {
                       onChange={(e) => setStyle(e.target.value as typeof style)}
                       className="hidden"
                     />
-                    <h3 className="font-medium text-gray-900 mb-2">{styleOption.name}</h3>
-                    <p className="text-sm text-gray-600">{styleOption.desc}</p>
+                    <h3 className="font-medium text-vanilla mb-2">{styleOption.name}</h3>
+                    <p className="text-sm text-vanilla/70">{styleOption.desc}</p>
                   </label>
                 ))}
               </div>
@@ -247,51 +252,51 @@ export default function CreateCarousel() {
 
             {/* Color Customization */}
             <div>
-              <label className="block text-lg font-semibold text-gray-900 mb-4">
+              <label className="block text-lg font-semibold text-vanilla mb-4">
                 Custom Colors
               </label>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
+                    <label className="block text-sm font-medium text-vanilla/80 mb-2">Primary Color</label>
                     <input
                       id="primaryColor"
                       type="color"
                       value={customColors.primary}
                       onChange={(e) => setCustomColors(prev => ({ ...prev, primary: e.target.value }))}
-                      className="w-full h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+                      className="w-full h-12 rounded-lg border-2 border-charcoal/50 cursor-pointer"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Secondary Color</label>
+                    <label className="block text-sm font-medium text-vanilla/80 mb-2">Secondary Color</label>
                     <input
                       id="secondaryColor"
                       type="color"
                       value={customColors.secondary}
                       onChange={(e) => setCustomColors(prev => ({ ...prev, secondary: e.target.value }))}
-                      className="w-full h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+                      className="w-full h-12 rounded-lg border-2 border-charcoal/50 cursor-pointer"
                     />
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Accent Color 1</label>
+                    <label className="block text-sm font-medium text-vanilla/80 mb-2">Accent Color 1</label>
                     <input
                       id="accent1"
                       type="color"
                       value={customColors.accent1}
                       onChange={(e) => setCustomColors(prev => ({ ...prev, accent1: e.target.value }))}
-                      className="w-full h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+                      className="w-full h-12 rounded-lg border-2 border-charcoal/50 cursor-pointer"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Accent Color 2</label>
+                    <label className="block text-sm font-medium text-vanilla/80 mb-2">Accent Color 2</label>
                     <input
                       id="accent2"
                       type="color"
                       value={customColors.accent2}
                       onChange={(e) => setCustomColors(prev => ({ ...prev, accent2: e.target.value }))}
-                      className="w-full h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+                      className="w-full h-12 rounded-lg border-2 border-charcoal/50 cursor-pointer"
                     />
                   </div>
                 </div>
@@ -300,17 +305,17 @@ export default function CreateCarousel() {
 
             {/* Font Selection */}
             <div>
-              <label className="block text-lg font-semibold text-gray-900 mb-4">
+              <label className="block text-lg font-semibold text-vanilla mb-4">
                 Font Selection
               </label>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Primary Font</label>
+                  <label className="block text-sm font-medium text-vanilla/80 mb-2">Primary Font</label>
                   <select
                     id="primaryFont"
                     value={primaryFont}
                     onChange={(e) => setPrimaryFont(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-charcoal/50 rounded-lg focus:ring-2 focus:ring-pacific focus:border-pacific"
                   >
                     {universalFonts.map((font) => (
                       <option key={font} value={font}>{font}</option>
@@ -318,12 +323,12 @@ export default function CreateCarousel() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Secondary Font</label>
+                  <label className="block text-sm font-medium text-vanilla/80 mb-2">Secondary Font</label>
                   <select
                     id="secondaryFont"
                     value={secondaryFont}
                     onChange={(e) => setSecondaryFont(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-charcoal/50 rounded-lg focus:ring-2 focus:ring-pacific focus:border-pacific"
                   >
                     {universalFonts.map((font) => (
                       <option key={font} value={font}>{font}</option>
@@ -338,7 +343,7 @@ export default function CreateCarousel() {
               <button
                 onClick={handleGenerateCarousel}
                 disabled={images.length === 0 || generating}
-                className="flex items-center px-8 py-3 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center px-8 py-3 bg-pacific hover:bg-pacific-deep text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generating ? (
                   <>

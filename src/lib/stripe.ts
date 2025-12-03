@@ -19,8 +19,9 @@ export async function createCheckoutSession(userId: string): Promise<{ url: stri
     let data;
     try {
       data = JSON.parse(text);
-    } catch (e) {
-      throw new Error(`Invalid response: ${text}`);
+    } catch (parseError: unknown) {
+      const message = parseError instanceof Error ? parseError.message : 'Invalid JSON response';
+      throw new Error(`Invalid response: ${text} (${message})`);
     }
 
     if (!response.ok) {
@@ -28,9 +29,10 @@ export async function createCheckoutSession(userId: string): Promise<{ url: stri
     }
 
     return { url: data.url };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown checkout error';
     console.error('Checkout error:', error);
-    return { url: null, error: error.message };
+    return { url: null, error: message };
   }
 }
 
@@ -52,8 +54,9 @@ export async function createCustomerPortalSession(customerId: string): Promise<{
     }
 
     return { url: data.url };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown portal error';
     console.error('Portal error:', error);
-    return { url: null, error: error.message };
+    return { url: null, error: message };
   }
 }

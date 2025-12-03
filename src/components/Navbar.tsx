@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Layers, User, LogOut } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   transparent?: boolean;
@@ -11,16 +11,20 @@ export default function Navbar({ transparent = false }: NavbarProps) {
   const { user, logout } = useAuth();
 
   return (
-    <nav className={`fixed w-full z-50 transition-all duration-300 ${
-      transparent ? 'bg-transparent' : 'bg-gradient-to-r from-indigo-900 to-purple-800 backdrop-blur-sm shadow-lg'
-    }`}>
+    <nav
+      className={`fixed w-full z-50 transition-all duration-300 ${
+        transparent
+          ? 'bg-transparent'
+          : 'bg-surface/80 backdrop-blur-xl border-b border-charcoal/40 shadow-soft'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <img 
-                src="https://storage.googleapis.com/msgsndr/QFjnAi2H2A9Cpxi7l0ri/media/68bdde997b3d2f00448d506d.png" 
-                alt="SlideFlow" 
+              <img
+                src="/logo.png"
+                alt="SlideFlow"
                 className="h-8 w-auto"
               />
             </Link>
@@ -29,33 +33,27 @@ export default function Navbar({ transparent = false }: NavbarProps) {
           <div className="flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-4">
-                <Link 
+                <Link
                   to="/dashboard"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    transparent 
-                      ? 'text-white hover:text-gray-200' 
-                      : 'text-white hover:text-gray-200'
-                  }`}
+                  className="px-3 py-2 rounded-md text-sm font-medium text-vanilla/80 hover:text-vanilla transition-colors"
                 >
                   Dashboard
                 </Link>
                 <div className="relative group">
-                  <button className={`flex items-center space-x-1 p-2 rounded-md ${
-                    transparent ? 'text-white hover:bg-white/10' : 'text-white hover:bg-white/10'
-                  }`}>
+                  <button className="flex items-center space-x-2 px-3 py-2 rounded-md text-vanilla/80 hover:text-vanilla hover:bg-surface-muted transition-colors border border-transparent group-hover:border-charcoal/50">
                     <User className="h-5 w-5" />
                     <span className="text-sm">{user.name}</span>
                   </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                    <Link 
-                      to="/profile" 
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  <div className="absolute right-0 mt-3 w-52 bg-surface-alt rounded-lg shadow-soft border border-charcoal/50 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-2 text-sm text-vanilla/80 hover:text-vanilla hover:bg-surface-muted"
                     >
                       Profile
                     </Link>
-                    <button 
+                    <button
                       onClick={logout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-sm text-vanilla/80 hover:text-vanilla hover:bg-surface-muted"
                     >
                       <LogOut className="inline h-4 w-4 mr-2" />
                       Sign out
@@ -64,20 +62,16 @@ export default function Navbar({ transparent = false }: NavbarProps) {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center space-x-4">
-                <Link 
+              <div className="flex items-center space-x-3">
+                <Link
                   to="/login"
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    transparent 
-                      ? 'text-white hover:text-gray-200' 
-                      : 'text-white hover:text-gray-200'
-                  }`}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-vanilla/80 hover:text-vanilla transition-colors"
                 >
                   Sign In
                 </Link>
-                <Link 
+                <Link
                   to="/signup"
-                  className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="sf-btn-primary text-sm px-4 py-2"
                 >
                   Get Started
                 </Link>
