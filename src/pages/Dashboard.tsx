@@ -420,7 +420,7 @@ export default function Dashboard() {
             <div className="sf-card p-6">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-tropical/15 text-tropical">
-                  <CalendarCheck2 className="h-6 w-6" />
+                  <CalendarDays className="h-6 w-6" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-vanilla/70">This Month</p>
