@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useContentLibrary, type LibraryImage } from '../contexts/ContentLibraryContext';
+import { useMediaLibrary, type LibraryImage } from '../contexts/MediaLibraryContext';
 import { X, Check, Image as ImageIcon } from 'lucide-react';
 
 interface ImportLibraryModalProps {
@@ -17,7 +17,7 @@ export default function ImportLibraryModal({
   maxImages = 10,
   currentImageCount = 0
 }: ImportLibraryModalProps) {
-  const { images } = useContentLibrary();
+  const { images } = useMediaLibrary();
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
 

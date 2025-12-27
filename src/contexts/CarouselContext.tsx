@@ -24,6 +24,9 @@ export interface Carousel {
   status?: string;
   scheduled_at?: string | null;
   posting_status?: 'draft' | 'scheduled' | 'posted' | 'failed';
+  publish_started_at?: string | null;
+  publish_completed_at?: string | null;
+  publish_error?: string | null;
 }
 
 interface CarouselContextType {
@@ -84,7 +87,10 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
         style: 'minimalist' as const, // Default style
         status: dbCarousel.status,
         scheduled_at: dbCarousel.scheduled_at || null,
-        posting_status: dbCarousel.posting_status || 'draft'
+        posting_status: dbCarousel.posting_status || 'draft',
+        publish_started_at: dbCarousel.publish_started_at || null,
+        publish_completed_at: dbCarousel.publish_completed_at || null,
+        publish_error: dbCarousel.publish_error || null,
       }));
       
       setCarousels(transformedCarousels);
@@ -119,6 +125,9 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
         status: carouselData.status,
         scheduled_at: carouselData.scheduled_at || null,
         posting_status: carouselData.posting_status || 'draft',
+        publish_started_at: carouselData.publish_started_at || null,
+        publish_completed_at: carouselData.publish_completed_at || null,
+        publish_error: carouselData.publish_error || null,
         slides: carouselData.slides.map(slide => ({
           id: slide.id,
           image: slide.image,
@@ -301,6 +310,9 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
     const originalCarousel = carousels.find(c => c.id === id);
     if (!originalCarousel) {
       throw new Error('Carousel not found');
+    }
+    if ((originalCarousel.status || '').toLowerCase() === 'published') {
+      throw new Error('Published carousels cannot be scheduled.');
     }
 
     // Optimistically update local state

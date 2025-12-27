@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useCarousel, type Carousel } from '../contexts/CarouselContext';
-import { type LibraryImage } from '../contexts/ContentLibraryContext';
+import { useMediaLibrary } from '../contexts/MediaLibraryContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Navbar from '../components/Navbar';
@@ -15,10 +15,12 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import ImportLibraryModal from '../components/ImportLibraryModal';
+import MediaLibraryModal, { type MediaLibraryTab } from '../components/MediaLibraryModal';
 
 const TOTAL_APP_PAGES = 5;
 const MAX_PREVIEW_SLOTS = 10;
+const PROMPT_MAX_LENGTH = 1000;
+const CAPTION_MAX_LENGTH = 2200;
 export const ASPECT_OPTIONS = [
   { value: '4:5' as const, label: '4:5 Portrait', helper: '(Recommended)' },
   { value: '1:1' as const, label: '1:1 Square', helper: 'Consistent across previews' },
@@ -132,6 +134,7 @@ async function persistDraftSlidesToSupabase(
 export default function GenerateCaption() {
   const { currentCarousel, setCurrentCarousel, fetchCarousel, updateCarousel } = useCarousel();
   const { user } = useAuth();
+  const { savePrompt, saveCaption } = useMediaLibrary();
   const { carouselId } = useParams<{ carouselId: string }>();
   const location = useLocation();
   const navState = location.state as { carousel?: Carousel; caption?: string; slideDrafts?: SlideDraft[]; aspectRatio?: AspectRatio } | null;
@@ -145,7 +148,12 @@ export default function GenerateCaption() {
   const [orderedSlides, setOrderedSlides] = useState(currentCarousel?.slides ?? []);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(!navCarousel && navDrafts.length === 0);
-  const [showImportModal, setShowImportModal] = useState(false);
+  const [showLibraryModal, setShowLibraryModal] = useState(false);
+  const [libraryTab, setLibraryTab] = useState<MediaLibraryTab>('prompts');
+  const [promptSaving, setPromptSaving] = useState(false);
+  const [captionSaving, setCaptionSaving] = useState(false);
+  const [promptSaved, setPromptSaved] = useState(false);
+  const [captionSaved, setCaptionSaved] = useState(false);
   const dragPreviewRef = React.useRef<HTMLDivElement | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [slidesUploading, setSlidesUploading] = useState(navDrafts.length > 0);
@@ -385,26 +393,6 @@ export default function GenerateCaption() {
     };
   }, []);
 
-  const handleImportFromLibrary = (importedImages: LibraryImage[]) => {
-    if (!importedImages.length) return;
-    const available = MAX_PREVIEW_SLOTS - orderedSlides.length;
-    if (available <= 0) return;
-
-    const toAdd = importedImages.slice(0, available).map((image) => ({
-      id: image.path || crypto.randomUUID(),
-      image: image.url,
-      caption: image.name || 'Imported image',
-    }));
-
-    setOrderedSlides((prev) => {
-      const next = [...prev, ...toAdd].slice(0, MAX_PREVIEW_SLOTS);
-      if (currentCarousel) {
-        setCurrentCarousel({ ...currentCarousel, slides: next });
-      }
-      return next;
-    });
-  };
-
   if (!orderedSlides.length && !slidesUploading && !loading) {
     return (
       <div className="min-h-screen bg-ink text-vanilla">
@@ -486,9 +474,32 @@ export default function GenerateCaption() {
     setSparklesTooltip((prev) => ({ ...prev, visible: false }));
   };
 
-  const handleSavePrompt = () => {
-    // Placeholder for future save logic
-    console.log('Save prompt clicked');
+  const handleSavePrompt = async () => {
+    const nextText = captionPrompt.trim();
+    if (!nextText || promptSaving) return;
+    setPromptSaving(true);
+    const ok = await savePrompt(nextText);
+    setPromptSaving(false);
+    if (!ok) {
+      alert('Save failed. Please try again.');
+      return;
+    }
+    setPromptSaved(true);
+    window.setTimeout(() => setPromptSaved(false), 1500);
+  };
+
+  const handleSaveCaption = async () => {
+    const nextText = manualCaption.trim();
+    if (!nextText || captionSaving) return;
+    setCaptionSaving(true);
+    const ok = await saveCaption(nextText);
+    setCaptionSaving(false);
+    if (!ok) {
+      alert('Save failed. Please try again.');
+      return;
+    }
+    setCaptionSaved(true);
+    window.setTimeout(() => setCaptionSaved(false), 1500);
   };
 
   const totalSlides = orderedSlides.length || navDrafts.length || 0;
@@ -699,8 +710,8 @@ export default function GenerateCaption() {
                         </div>
                       )}
                       {canReview && (
-                        <span className="absolute inset-0 z-10 flex items-center justify-center text-xl font-extrabold leading-tight text-white drop-shadow-sm">
-                          Click
+                        <span className="absolute inset-0 z-10 flex items-center justify-center text-lg font-extrabold leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
+                          Continue
                         </span>
                       )}
                     </button>
@@ -735,7 +746,10 @@ export default function GenerateCaption() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => setShowImportModal(true)}
+                          onClick={() => {
+                            setLibraryTab('prompts');
+                            setShowLibraryModal(true);
+                          }}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors border border-[#225561] bg-[#225561] text-sand hover:bg-[#2f7f90] hover:border-[#2f7f90]"
                           aria-label="Open media library"
                         >
@@ -745,11 +759,16 @@ export default function GenerateCaption() {
                         <button
                           type="button"
                           onClick={handleSavePrompt}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors border border-[#225561] bg-[#225561] text-sand hover:bg-[#2f7f90] hover:border-[#2f7f90]"
+                          disabled={!captionPrompt.trim() || promptSaving}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors border ${
+                            !captionPrompt.trim() || promptSaving
+                              ? 'bg-surface text-vanilla/50 border-charcoal/60 cursor-not-allowed'
+                              : 'border-[#225561] bg-[#225561] text-sand hover:bg-[#2f7f90] hover:border-[#2f7f90]'
+                          }`}
                           aria-label="Save prompt"
                         >
                           <Save className="h-4 w-4" />
-                          Save Prompt
+                          {promptSaving ? 'Saving…' : promptSaved ? 'Saved' : 'Save Prompt'}
                         </button>
                         <button
                           type="button"
@@ -780,11 +799,11 @@ export default function GenerateCaption() {
                       onDoubleClick={() => openTextModal('prompt')}
                       placeholder="Example: Energetic caption for a 5-slide carousel about daily systems for freelancers."
                       className="w-full h-24 px-4 py-3 border border-charcoal/50 rounded-lg bg-ink/40 focus:outline-none focus:ring-0 focus:border-[#39a1b2] resize-none text-vanilla/80 placeholder:text-vanilla/50"
-                      maxLength={400}
+                      maxLength={PROMPT_MAX_LENGTH}
                     />
                     <div className="flex items-center justify-between text-xs text-vanilla/60">
                       <span>Hint: Give the vibe, hook, and audience. AI will write from here.</span>
-                      <span>{captionPrompt.length}/400</span>
+                      <span>{captionPrompt.length}/{PROMPT_MAX_LENGTH}</span>
                     </div>
                   </div>
                 </div>
@@ -805,7 +824,10 @@ export default function GenerateCaption() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setShowImportModal(true)}
+                        onClick={() => {
+                          setLibraryTab('captions');
+                          setShowLibraryModal(true);
+                        }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors border border-[#225561] bg-[#225561] text-sand hover:bg-[#2f7f90] hover:border-[#2f7f90]"
                       >
                         <FolderOpen className="h-4 w-4" />
@@ -813,11 +835,16 @@ export default function GenerateCaption() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => console.log('Save caption clicked')}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors border border-[#225561] bg-[#225561] text-sand hover:bg-[#2f7f90] hover:border-[#2f7f90]"
+                        onClick={handleSaveCaption}
+                        disabled={!manualCaption.trim() || captionSaving}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors border ${
+                          !manualCaption.trim() || captionSaving
+                            ? 'bg-surface text-vanilla/50 border-charcoal/60 cursor-not-allowed'
+                            : 'border-[#225561] bg-[#225561] text-sand hover:bg-[#2f7f90] hover:border-[#2f7f90]'
+                        }`}
                       >
                         <Save className="h-4 w-4" />
-                        Save Caption
+                        {captionSaving ? 'Saving…' : captionSaved ? 'Saved' : 'Save Caption'}
                       </button>
                     </div>
                   </div>
@@ -826,12 +853,12 @@ export default function GenerateCaption() {
                     onChange={(e) => setManualCaption(e.target.value)}
                     onDoubleClick={() => openTextModal('caption')}
                     placeholder="Type or paste your caption…"
-                    maxLength={2200}
+                    maxLength={CAPTION_MAX_LENGTH}
                     className="w-full h-32 bg-surface rounded-lg border border-charcoal/50 p-4 text-base text-vanilla/80 focus:outline-none focus:ring-0 focus:border-[#39a1b2] resize-none overflow-y-auto placeholder:text-vanilla/55"
                   />
                   <div className="flex items-center justify-between text-xs text-vanilla/60">
                     <p className="text-left">Hint: You can import your saved captions from the media library.</p>
-                    <span>{manualCaption.length}/2200</span>
+                    <span>{manualCaption.length}/{CAPTION_MAX_LENGTH}</span>
                   </div>
                 </div>
               </div>
@@ -873,12 +900,18 @@ export default function GenerateCaption() {
           </div>
         </div>
       </main>
-      <ImportLibraryModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onImport={handleImportFromLibrary}
-        maxImages={MAX_PREVIEW_SLOTS}
-        currentImageCount={orderedSlides.length}
+      <MediaLibraryModal
+        isOpen={showLibraryModal}
+        initialTab={libraryTab}
+        onClose={() => setShowLibraryModal(false)}
+        onSelectPrompt={(text) => {
+          setCaptionPrompt(text);
+          setShowLibraryModal(false);
+        }}
+        onSelectCaption={(text) => {
+          setManualCaption(text);
+          setShowLibraryModal(false);
+        }}
       />
       {sparklesTooltip.visible && (
         <div
@@ -913,6 +946,7 @@ export default function GenerateCaption() {
             <textarea
               value={textModal.value}
               onChange={(e) => setTextModal({ ...textModal, value: e.target.value })}
+              maxLength={textModal.field === 'prompt' ? PROMPT_MAX_LENGTH : CAPTION_MAX_LENGTH}
               className="w-full h-[420px] bg-ink/50 rounded-lg border border-charcoal/60 p-4 text-base text-vanilla/85 focus:outline-none focus:ring-2 focus:ring-pacific focus:border-pacific resize-none"
               autoFocus
             />

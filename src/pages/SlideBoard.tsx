@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { type UploadedFileInfo, type LibraryImage } from '../contexts/ContentLibraryContext';
+import { type UploadedFileInfo, type LibraryImage } from '../contexts/MediaLibraryContext';
 import { useCarousel, type Carousel } from '../contexts/CarouselContext';
 import ImportLibraryModal from '../components/ImportLibraryModal';
 import Navbar from '../components/Navbar';
@@ -50,12 +50,22 @@ export default function SlideBoard() {
   const slotTargetRef = React.useRef<number | null>(null);
   const dragPreviewRef = React.useRef<HTMLDivElement | null>(null);
   
-  const { currentCarousel, setCurrentCarousel } = useCarousel();
+  const { currentCarousel, setCurrentCarousel, fetchCarousel } = useCarousel();
   const navigate = useNavigate();
   const location = useLocation();
   const navState = location.state as { carousel?: Carousel } | null;
   const navCarousel = navState?.carousel;
+  const [hydratedCarousel, setHydratedCarousel] = useState<Carousel | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  const isBlobUrl = (url?: string) =>
+    typeof url === 'string' && (url.startsWith('blob:') || url.startsWith('data:'));
+
+  const hasRemoteSlides = (carousel?: Carousel | null) =>
+    Boolean(carousel?.slides?.some((slide) => typeof slide.image === 'string' && slide.image.startsWith('http')));
+
+  const hasBlobSlides = (carousel?: Carousel | null) =>
+    Boolean(carousel?.slides?.some((slide) => isBlobUrl(slide.image)));
 
   const revokePreview = (url?: string) => {
     if (url && url.startsWith('blob:')) {
@@ -353,7 +363,34 @@ export default function SlideBoard() {
   };
 
   React.useEffect(() => {
-    const source = navCarousel || currentCarousel;
+    const candidate = currentCarousel ?? navCarousel;
+    if (!candidate?.id || !candidate.slides?.length) return;
+    if (!hasBlobSlides(candidate)) {
+      setHydratedCarousel(candidate);
+      return;
+    }
+    let cancelled = false;
+    fetchCarousel(candidate.id)
+      .then((fresh) => {
+        if (!fresh || cancelled) return;
+        setCurrentCarousel(fresh);
+        setHydratedCarousel(fresh);
+      })
+      .catch((err) => {
+        console.warn('Failed to rehydrate carousel slides:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentCarousel, navCarousel, fetchCarousel, setCurrentCarousel]);
+
+  React.useEffect(() => {
+    const source =
+      hydratedCarousel ||
+      (hasRemoteSlides(currentCarousel) ? currentCarousel : null) ||
+      (hasRemoteSlides(navCarousel) ? navCarousel : null) ||
+      currentCarousel ||
+      navCarousel;
     if (!source?.slides?.length) return;
 
     // Keep the global carousel context aligned with the incoming carousel.
@@ -362,13 +399,17 @@ export default function SlideBoard() {
     }
 
     setPreviews((prev) => {
-      if (prev.some(Boolean)) return prev;
-      return placeSlidesIntoSlots(source.slides, (s) => s.image);
+      const next = placeSlidesIntoSlots(source.slides, (s) => s.image);
+      const prevHasValues = prev.some(Boolean);
+      if (!prevHasValues) return next;
+      const prevHasBlob = prev.some((url) => isBlobUrl(url));
+      const nextHasRemote = next.some((url) => typeof url === 'string' && url.startsWith('http'));
+      if (prevHasBlob && nextHasRemote) return next;
+      return prev;
     });
 
     setUploadedInfos((prev) => {
-      if (prev.some(Boolean)) return prev;
-      return placeSlidesIntoSlots(source.slides, (s, idx) =>
+      const next = placeSlidesIntoSlots(source.slides, (s, idx) =>
         s.originalMedia
           ? { ...s.originalMedia, is_library: true }
           : ({
@@ -380,8 +421,13 @@ export default function SlideBoard() {
               is_library: true,
             } as UploadedFileInfo)
       );
+      if (!prev.some(Boolean)) return next;
+      const prevHasBlob = previews.some((url) => isBlobUrl(url));
+      const nextHasRemote = next.some((info) => Boolean(info?.bucket && info?.path));
+      if (prevHasBlob && nextHasRemote) return next;
+      return prev;
     });
-  }, [navCarousel, currentCarousel, setCurrentCarousel]);
+  }, [navCarousel, currentCarousel, hydratedCarousel, previews, setCurrentCarousel]);
 
   const imageCount =
     slotFiles.filter(Boolean).length ||
@@ -669,8 +715,8 @@ export default function SlideBoard() {
                       className="absolute inset-0 block w-full h-full object-cover select-none pointer-events-none"
                     />
                     {canGenerate && (
-                      <span className="absolute inset-0 z-10 flex items-center justify-center text-xl font-extrabold leading-tight text-white drop-shadow-sm">
-                        Click
+                      <span className="absolute inset-0 z-10 flex items-center justify-center text-lg font-extrabold leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
+                        Continue
                       </span>
                     )}
                     <span className="sr-only">{generateLabel}</span>

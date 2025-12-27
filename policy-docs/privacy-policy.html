@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SlideFlow Privacy Policy</title>
+    <style>
+      :root { color-scheme: light; }
+      body {
+        margin: 0;
+        padding: 32px 16px;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        line-height: 1.5;
+        background: #ffffff;
+        color: #111827;
+      }
+      .container { max-width: 900px; margin: 0 auto; }
+      header { margin-bottom: 18px; }
+      nav a { margin-right: 12px; color: #2563eb; text-decoration: none; }
+      nav a:hover { text-decoration: underline; }
+      h1 { font-size: 24px; margin: 0 0 8px; }
+      .hint { color: #6b7280; font-size: 13px; }
+      pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #f9fafb;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>SlideFlow Privacy Policy</h1>
+        <nav>
+          <a href="./privacy-policy.html">Privacy Policy</a>
+          <a href="./terms-of-service.html">Terms</a>
+          <a href="./data-deletion.html">Data Deletion</a>
+        </nav>
+        <div class="hint">This page is generated from Markdown for hosting purposes.</div>
+      </header>
+      <pre># SlideFlow Privacy Policy (Meta / Instagram Connection)
+
+**Effective date:** _[Month Day, Year]_  
+**Company / Controller:** SlideFlow (placeholder legal entity)  
+**Address:** _[123 Placeholder Ave, Phoenix, AZ 85000]_  
+**Contact:** _[support@placeholder.com]_  
+**Website/App:** https://yourdomain.com (the “Service”)
+
+This Privacy Policy explains how SlideFlow collects, uses, shares, and protects information when you use SlideFlow, including when you connect your Meta account (Facebook Login / Instagram Graph API) and authorize SlideFlow to publish content on your behalf. Replace the italicized placeholders above with your real details before going live.
+
+---
+
+## 1. Scope
+This Privacy Policy applies to:
+- The SlideFlow web application and related services.
+- SlideFlow’s integration with Meta Platforms, Inc. products (Facebook Login and Instagram Graph API) used to connect accounts and publish content.
+
+This Privacy Policy does not cover Meta’s own privacy practices. Review Meta’s policies separately.
+
+## 2. Information We Collect
+
+### A. Information you provide to SlideFlow
+- **Account information:** email address, name (and any other profile fields you choose to provide).
+- **Content you upload or create:** images/videos you upload, carousel titles, slide ordering, captions you write, and scheduling preferences.
+- **Support communications:** messages you send us (e.g., emails or in-app requests).
+
+### B. Information from Meta when you click “Connect to Meta”
+When you connect Meta through SlideFlow, you authorize SlideFlow to access information needed to identify eligible assets and publish content. Depending on the permissions granted and your account configuration, SlideFlow may access and process:
+- **Facebook Pages you manage** (Page id + Page name).
+- **Instagram professional account information** connected to those Pages (Instagram business account id + username).
+- **Meta access tokens** required to make Graph API requests and publish content (including exchanging a short-lived token for a long-lived token).
+
+SlideFlow does **not** receive your Meta password.
+
+### C. Payment information
+If you subscribe, payments are processed by **Stripe**. SlideFlow may store limited billing identifiers (Stripe customer/subscription ids and subscription status). Card details are handled by Stripe, not stored by SlideFlow.
+
+### D. Technical and usage information
+We and our service providers may collect IP address, device/browser information, timestamps, and logs related to authentication, security, and app performance.
+
+## 3. How We Use Information
+We use information to:
+- Provide and operate the Service (create accounts, store media, manage carousels, render previews, and enable publishing workflows).
+- Connect your Meta account and identify eligible Instagram Business accounts / Facebook Pages.
+- Publish your selected content to Instagram/Facebook **only when you initiate publishing or scheduling**.
+- Maintain security, prevent abuse, troubleshoot, and improve reliability.
+- Provide customer support and respond to requests.
+- Manage subscriptions and enforce usage limits/quotas.
+
+## 4. Meta Data Use, Storage, and Sharing
+
+### A. What SlideFlow stores from Meta
+To support publishing, SlideFlow stores:
+- **Non-secret connection identifiers** shown in-app (Instagram professional account id/username, Facebook Page id/name).
+- **Tokens needed for publishing** (stored server-side in Supabase `connected_account_secret`, not exposed to other users).
+
+### B. How SlideFlow uses Meta data
+SlideFlow uses Meta data and tokens to:
+- Fetch Pages and Instagram Business accounts you can publish to.
+- Publish your approved content via the Instagram Graph API.
+- Maintain the connection, support default destination selection, and audit publishing attempts.
+
+### C. Sharing with Meta
+When publishing, SlideFlow sends requests to Meta’s APIs that may include:
+- Instagram business account id / Page id.
+- Media URLs or references needed by Meta to fetch and publish your content.
+- Captions you provide.
+- Access tokens required by the API.
+
+This sharing is necessary to perform the actions you request.
+
+## 5. How We Share Information (Service Providers)
+We do not sell personal information. We share information only with service providers needed to operate SlideFlow, including:
+- **Supabase** (authentication, database, storage, edge functions).
+- **Meta Platforms, Inc.** (Facebook Login / Instagram Graph API).
+- **Stripe** (billing/subscriptions).
+- **Workflow/automation services** invoked via Supabase Edge Functions for ingestion, media derivatives, or publishing tasks.
+
+We may also disclose information if required by law, to protect rights and safety, or as part of a business transaction (e.g., merger/acquisition).
+
+## 6. Data Retention
+We retain information as long as necessary to provide the Service, comply with legal obligations, resolve disputes, and enforce agreements. Examples:
+- Uploaded content and carousel records remain until you delete them or close your account (subject to operational backups).
+- Meta connection identifiers and tokens remain until you disconnect Meta, delete your account, or tokens expire/are rotated.
+
+## 7. Your Choices &amp; Controls
+
+### A. Disconnecting Meta
+Disconnect destinations under **Profile → Posting destinations → Disconnect**. Doing so deletes the server-side tokens associated with that destination and stops SlideFlow from publishing to it.
+
+### B. Access, correction, deletion
+Request access to, correction of, or deletion of personal information by emailing **[support@placeholder.com]**. If you delete your SlideFlow account, we delete or de-identify your personal data, subject to legitimate retention needs (billing, fraud logs, backups).
+
+## 8. Data Deletion Instructions (Meta Requirement)
+To delete Meta-related data:
+1. Disconnect Meta destinations inside SlideFlow (Profile → Posting destinations → Disconnect).
+2. Email **[support@placeholder.com]** with the subject “Meta Data Deletion Request,” include the SlideFlow account email and the Instagram usernames/Page names you want removed.
+
+We will process verified requests within a reasonable timeframe, consistent with applicable law and operational requirements. See `docs/data_deletion.md` for the public-facing instructions you can host separately.
+
+## 9. Security
+We use reasonable administrative, technical, and organizational safeguards to protect information. No method of transmission or storage is 100% secure, so we cannot guarantee absolute security.
+
+## 10. Children’s Privacy
+SlideFlow is not intended for children under 13, and we do not knowingly collect personal information from children under 13.
+
+## 11. International Users
+SlideFlow is based in Arizona (USA). If you access the Service from outside the United States, your information may be processed in the United States and other countries where our service providers operate.
+
+## 12. Changes to This Policy
+We may update this Privacy Policy from time to time. We will update the “Effective date” and, if changes are material, provide additional notice as required.
+
+## 13. Contact Us
+SlideFlow  
+_[123 Placeholder Ave, Phoenix, AZ 85000]_  
+Email: _[support@placeholder.com]_
+
+---
+
+**Next steps:**  
+- Replace placeholder contact information when finalized.  
+- Convert this Markdown file to a hosted page (see instructions in `docs/meta_policy_hosting.md` once created).  
+- Provide the hosted URL(s) to Meta for the “Privacy Policy” and “User data deletion” fields.
+</pre>
+    </div>
+  </body>
+</html>

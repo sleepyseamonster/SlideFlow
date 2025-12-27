@@ -19,7 +19,7 @@ Ensure the “Delete (X)” bulk action removes selected library images from bot
 
 ## Files touched by the flow
 - `src/pages/MediaLibrary.tsx` — `handleBulkDelete`, delete button rendering and state.
-- `src/contexts/ContentLibraryContext.tsx` — `removeImage` deletes from storage and `media` table.
+- `src/contexts/MediaLibraryContext.tsx` — `removeImage` deletes from storage and `media` table.
 
 ## Success Criteria
 - Confirm dialog appears.

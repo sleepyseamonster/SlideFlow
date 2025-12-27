@@ -3,22 +3,25 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCarousel, type Carousel, type CarouselSlide } from '../contexts/CarouselContext';
 import { supabase } from '../lib/supabase';
+import { PLAN_LABELS, PLAN_OPTIONS } from '../lib/plans';
 import Navbar from '../components/Navbar';
 import { 
   Plus, 
   Copy, 
   Trash2, 
-  Download, 
   CalendarDays,
-  TrendingUp,
+  Grid3X3,
   Star,
   Clock,
+  CheckCircle,
+  CalendarCheck,
   Image as ImageIcon,
   FolderOpen,
   Palette,
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  Instagram,
   Send
 } from 'lucide-react';
 
@@ -28,7 +31,6 @@ export default function Dashboard() {
     carousels,
     loading,
     deleteCarousel,
-    duplicateCarousel,
     duplicateCarouselDeep,
     setCurrentCarousel,
     fetchCarousel,
@@ -54,9 +56,12 @@ export default function Dashboard() {
   const calendarRef = React.useRef<HTMLElement>(null);
 
   const canGenerate = user && user.carouselsGenerated < user.maxCarousels;
-  const planLabel = (user?.plan || 'free').toString();
-  const isPremium = planLabel.toLowerCase() === 'premium';
-  const planTextClass = isPremium ? 'text-pacific' : 'text-vanilla';
+  const planKey = user?.plan ?? 'free';
+  const planLabel = PLAN_LABELS[planKey] ?? 'Free';
+  const isPaidPlan = planKey !== 'free';
+  const planTextClass = isPaidPlan ? 'text-pacific' : 'text-vanilla';
+  const creditsBalance = user?.creditsBalance ?? 0;
+  const planCredits = PLAN_OPTIONS.find((p) => p.key === planKey)?.monthlyCredits ?? 0;
 
   const calendarDays = React.useMemo(() => {
     const now = new Date();
@@ -71,9 +76,11 @@ export default function Dashboard() {
       const dayEnd = new Date(day);
       dayEnd.setHours(23, 59, 59, 999);
 
-      const scheduledCarousels = carousels.filter(c => {
-        if (!c.scheduled_at) return false;
-        const scheduledDate = new Date(c.scheduled_at);
+      const scheduledCarousels = carousels.filter((carousel) => {
+        if (!carousel.scheduled_at) return false;
+        const status = (carousel.status || '').toLowerCase();
+        if (status === 'published') return false;
+        const scheduledDate = new Date(carousel.scheduled_at);
         return scheduledDate >= dayStart && scheduledDate <= dayEnd;
       });
 
@@ -217,9 +224,56 @@ export default function Dashboard() {
 
   // Calculate time saved (assuming each carousel saves ~2.5 hours of manual work)
   const timeSavedHours = user ? Math.round(user.carouselsGenerated * 2.5 * 10) / 10 : 0;
+  const publishedCount = carousels.filter(
+    (carousel) => (carousel.status || '').toLowerCase() === 'published'
+  ).length;
+  const publishedThisMonth = React.useMemo(() => {
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    return carousels.filter((carousel) => {
+      if ((carousel.status || '').toLowerCase() !== 'published') return false;
+      if (!carousel.publish_completed_at) return false;
+      const publishedAt = new Date(carousel.publish_completed_at);
+      if (Number.isNaN(publishedAt.getTime())) return false;
+      return publishedAt.getMonth() === month && publishedAt.getFullYear() === year;
+    }).length;
+  }, [carousels]);
+
+  const scheduledThisMonth = React.useMemo(() => {
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    return carousels.filter((carousel) => {
+      if (!carousel.scheduled_at) return false;
+      const scheduledAt = new Date(carousel.scheduled_at);
+      if (Number.isNaN(scheduledAt.getTime())) return false;
+      return scheduledAt.getMonth() === month && scheduledAt.getFullYear() === year;
+    }).length;
+  }, [carousels]);
+  const [publishedTotal, setPublishedTotal] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!user) {
+      setPublishedTotal(0);
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    const key = `sf_published_count_${user.id}`;
+    const stored = Number(window.localStorage.getItem(key) || 0);
+    const next = Math.max(stored, publishedCount);
+    if (next !== stored) {
+      window.localStorage.setItem(key, String(next));
+    }
+    setPublishedTotal(next);
+  }, [user, publishedCount]);
 
   // Drag and Drop Handlers
-  const handleDragStart = (carouselId: string) => (e: React.DragEvent) => {
+  const handleDragStart = (carouselId: string, isPublished: boolean) => (e: React.DragEvent) => {
+    if (isPublished) {
+      e.preventDefault();
+      return;
+    }
     setDraggedCarouselId(carouselId);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', carouselId);
@@ -245,6 +299,11 @@ export default function Dashboard() {
     setDragOverDayId(null);
 
     if (!draggedCarouselId) return;
+    const draggedCarousel = carousels.find((carousel) => carousel.id === draggedCarouselId);
+    if ((draggedCarousel?.status || '').toLowerCase() === 'published') {
+      setDraggedCarouselId(null);
+      return;
+    }
 
     try {
       // Schedule the carousel for the dropped date (at noon)
@@ -386,6 +445,54 @@ export default function Dashboard() {
   const createButtonOverlayText = creatingCarousel ? 'Creating…' : null;
   const dashboardActionBtn =
     'sf-btn-secondary inline-flex items-center gap-2 justify-center min-w-[180px] px-4 py-4 h-[60px] text-base md:text-lg font-semibold transition-all';
+  const statsGridClass = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8';
+  const statCardBase = 'sf-card bg-surface-alt/90 border border-charcoal/40';
+  const statCardClass = `${statCardBase} px-3 py-2.5`;
+  const statRowClass = 'flex items-center gap-3';
+  const statLabelClass = 'text-[11px] text-vanilla/70';
+  const statValueClass = 'text-lg font-bold text-vanilla';
+  const defaultIgLabel = user?.instagramUsername
+    ? `@${user.instagramUsername}`
+    : user?.instagramBusinessAccountId || null;
+  const defaultPageLabel = user?.facebookPageName || user?.facebookPageId || null;
+  const hasDefaultMeta = Boolean(defaultIgLabel || defaultPageLabel);
+  const statCards = [
+    {
+      key: 'carousels',
+      label: 'Carousels',
+      value: carousels.length,
+      icon: Grid3X3,
+      iconClass: 'bg-pacific/15 text-pacific',
+    },
+    {
+      key: 'scheduled',
+      label: 'Scheduled',
+      value: scheduledThisMonth,
+      icon: CalendarDays,
+      iconClass: 'bg-pacific/15 text-pacific',
+    },
+    {
+      key: 'published',
+      label: 'Published',
+      value: publishedTotal,
+      icon: CheckCircle,
+      iconClass: 'bg-pacific/15 text-pacific',
+    },
+    {
+      key: 'month',
+      label: 'This Month',
+      value: publishedThisMonth,
+      icon: CalendarCheck,
+      iconClass: 'bg-pacific/15 text-pacific',
+    },
+    {
+      key: 'time-saved',
+      label: 'Time Saved',
+      value: `${timeSavedHours}h`,
+      icon: Clock,
+      iconClass: 'bg-pacific/15 text-pacific',
+    },
+  ] as const;
 
   return (
     <div className="min-h-screen bg-ink">
@@ -393,65 +500,120 @@ export default function Dashboard() {
       
       <main className="pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-vanilla">
-              Welcome back, {user?.name}!
-            </h1>
-            <p className="text-vanilla/70 mt-2">
-              Create and manage your Instagram carousel posts
-            </p>
+          {/* Header + Connected + Plan */}
+          {/* Header + Command cards */}
+          <div className="mb-8 space-y-3">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
+              <div>
+                <h1 className="text-3xl font-bold text-vanilla">
+                  Hello,&nbsp;
+                  <span className="text-pacific">{user?.name}</span>
+                </h1>
+                <p className="text-vanilla/70 mt-2">
+                  Create and manage your Instagram carousel posts
+                </p>
+              </div>
+              <div className="flex flex-col md:flex-row gap-3 justify-end items-stretch">
+                <Link
+                  to="/account-settings#meta-connections"
+                  className={`${statCardBase} relative overflow-hidden p-3 text-left transition-transform hover:-translate-y-0.5 hover:border-pacific/70 hover:ring-1 hover:ring-pacific/30 flex-[1.2] min-w-[360px] max-w-[640px]`}
+                >
+                  <div className="absolute inset-0"></div>
+                  <div className="relative space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="text-[11px] uppercase tracking-[0.2em] text-vanilla/60 whitespace-nowrap">
+                        Connected Accounts
+                      </h2>
+                      {hasDefaultMeta && (
+                        <span className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.3em] rounded-full bg-emerald-400/20 border border-emerald-400/80 text-emerald-300 whitespace-nowrap">
+                          Connected
+                        </span>
+                      )}
+                    </div>
+                    {hasDefaultMeta ? (
+                      <div className="text-sm text-vanilla space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Instagram className="h-4 w-4 text-pacific shrink-0" />
+                      <p className="font-semibold text-vanilla">
+                        Instagram{' '}
+                        <span className="text-pacific font-semibold">{defaultIgLabel}</span>
+                      </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-4 rounded-sm border border-charcoal/50 flex items-center justify-center bg-ink shrink-0">
+                            <span className="text-[10px] text-pacific">f</span>
+                          </div>
+                          <p className="font-semibold text-vanilla">
+                            Facebook{' '}
+                            <span className="text-pacific font-semibold">{defaultPageLabel ?? '—'}</span>
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-0.5">
+                          <p className="text-base font-semibold text-vanilla/80 whitespace-nowrap">Meta not connected</p>
+                        <p className="text-sm text-vanilla/60">
+                          Connect your Instagram + Facebook in Account Settings.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/billing')}
+                  className={`${statCardBase} relative p-3 text-left transition-all hover:bg-surface-alt hover:border-pacific/70 hover:ring-1 hover:ring-pacific/30 hover:-translate-y-0.5 w-full md:w-auto min-w-[220px] max-w-[360px] flex-shrink-0`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-pacific/15 text-pacific">
+                        <Star className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-[0.3em] text-vanilla/60">Plan</p>
+                        <p className={`text-lg font-semibold capitalize ${planTextClass}`}>{planLabel}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-semibold text-pacific hover:text-vanilla underline cursor-pointer">
+                      Manage
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <img
+                      src="/Credits.png"
+                      alt="AI credits"
+                      className="h-7 w-7 object-contain shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-vanilla/60">AI Credits</p>
+                      <p className="text-sm font-semibold text-vanilla">
+                        {creditsBalance.toLocaleString()} / {planCredits.toLocaleString()}{' '}
+                        <span className="text-[10px] text-vanilla/60">monthly</span>
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="sf-card p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-stormy/15 text-stormy">
-                  <TrendingUp className="h-6 w-6" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm text-vanilla/70">Carousels Created</p>
-                  <p className="text-2xl font-bold text-vanilla">{carousels.length}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="sf-card p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-tropical/15 text-tropical">
-                  <CalendarDays className="h-6 w-6" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm text-vanilla/70">This Month</p>
-                  <p className="text-2xl font-bold text-vanilla">{carousels.length}</p>
+          <div className={statsGridClass}>
+            {statCards.map(({ key, label, value, icon: Icon, iconClass }) => (
+              <div key={key} className={statCardClass}>
+                <div className={statRowClass}>
+                  <div className={`p-2 rounded-lg ${iconClass}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className={statLabelClass}>{label}</p>
+                    <p className={statValueClass}>{value}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="sf-card p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-surface-alt/10 text-vanilla">
-                  <Clock className="h-6 w-6" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm text-vanilla/70">Time Saved</p>
-                  <p className="text-2xl font-bold text-vanilla">{timeSavedHours}h</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="sf-card p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-surface/15 text-vanilla">
-                  <Star className="h-6 w-6" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm text-vanilla/70">Plan</p>
-                  <p className={`text-2xl font-bold capitalize ${planTextClass}`}>{planLabel}</p>
-                </div>
-              </div>
-            </div>
+            ))}
+
           </div>
 
           {/* Actions */}
@@ -639,20 +801,24 @@ export default function Dashboard() {
                 return { ...prev, [carousel.id]: Math.min(slides.length - 1, current + 1) };
               });
             };
-            const isScheduled = carousel.posting_status === 'scheduled' && carousel.scheduled_at;
+            const isPublished = (carousel.status || '').toLowerCase() === 'published';
+            const isScheduled = Boolean(carousel.scheduled_at) && !isPublished;
+            const publishLocked = isPublished;
             const scheduledDate = isScheduled ? new Date(carousel.scheduled_at!) : null;
             const isDragging = draggedCarouselId === carousel.id;
 
             return (
               <div
                 key={carousel.id}
-                draggable
-                onDragStart={handleDragStart(carousel.id)}
+                draggable={!isPublished}
+                onDragStart={handleDragStart(carousel.id, isPublished)}
                 onDragEnd={handleDragEnd}
                 className={`sf-card overflow-hidden transition-all text-sm w-full max-w-[14rem] group ${
                   isDragging
                     ? 'opacity-50 cursor-grabbing scale-95'
-                    : 'hover:-translate-y-0.5 cursor-grab active:cursor-grabbing'
+                    : isPublished
+                      ? 'cursor-not-allowed opacity-80'
+                      : 'hover:-translate-y-0.5 cursor-grab active:cursor-grabbing'
                 }`}
               >
                 <div
@@ -700,8 +866,17 @@ export default function Dashboard() {
                       >
                         <ChevronRight className="h-4 w-4" />
                       </button>
-                      <div className="absolute bottom-3 right-3 bg-ink/80 text-xs text-vanilla px-2 py-0.5 rounded-full border border-surface-alt">
-                        {currentIndex + 1} / {slides.length}
+                      <div className="absolute bottom-3 inset-x-0 flex justify-center pointer-events-none">
+                        <div className="flex items-center gap-1.5 rounded-full bg-ink/70 px-2 py-1 border border-surface-alt/70">
+                          {slides.map((_, idx) => (
+                            <span
+                              key={`${carousel.id}-dot-${idx}`}
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                idx === currentIndex ? 'bg-vanilla' : 'bg-vanilla/40'
+                              }`}
+                            />
+                          ))}
+                        </div>
                       </div>
                     </>
                   )}
@@ -745,11 +920,13 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between text-xs text-vanilla/70 mb-3">
                     <span
                       className={`px-2 py-1 rounded-full border capitalize ${
-                        (carousel.status || '').toLowerCase() === 'scheduled'
-                          ? 'bg-pacific/15 text-pacific border-pacific/60'
-                          : (carousel.status || '').toLowerCase() === 'ready'
-                            ? 'bg-[#1e8a4f]/20 text-[#1e8a4f] border-[#1e8a4f]/60'
-                            : 'bg-surface text-vanilla/80 border-charcoal/40'
+                        (carousel.status || '').toLowerCase() === 'published'
+                          ? 'bg-[#1d7c69]/20 text-[#59d1b6] border-[#2b9b85]/60'
+                          : (carousel.status || '').toLowerCase() === 'scheduled'
+                            ? 'bg-pacific/15 text-pacific border-pacific/60'
+                            : (carousel.status || '').toLowerCase() === 'ready'
+                              ? 'bg-[#1e8a4f]/20 text-[#1e8a4f] border-[#1e8a4f]/60'
+                              : 'bg-surface text-vanilla/80 border-charcoal/40'
                       }`}
                     >
                       {carousel.status || carousel.style}
@@ -764,22 +941,26 @@ export default function Dashboard() {
                     </div>
                   )}
                   
-                  <div className="flex space-x-2 text-xs">
-                    <button 
-                      onClick={() => duplicateCarouselDeep(carousel.id)}
-                      className="flex-1 flex items-center justify-center px-2.5 py-2 bg-surface hover:bg-ink text-vanilla/80 rounded-lg border border-charcoal/40 transition-colors"
-                    >
-                      <Copy className="h-4 w-4 mr-1" />
-                      Duplicate
-                    </button>
-                    <button
-                      type="button"
-                      className="flex-1 flex items-center justify-center px-2.5 py-2 rounded-lg border border-pacific bg-pacific/10 text-pacific hover:bg-pacific/20 hover:text-vanilla transition-colors"
-                    >
-                      <Send className="h-4 w-4 mr-1" />
-                      Publish
-                    </button>
-                  </div>
+                  {!isPublished && (
+                    <div className="flex space-x-2 text-xs">
+                      <button 
+                        onClick={() => duplicateCarouselDeep(carousel.id)}
+                        className="flex-1 flex items-center justify-center px-2.5 py-2 bg-surface hover:bg-ink text-vanilla/80 rounded-lg border border-charcoal/40 transition-colors"
+                      >
+                        <Copy className="h-4 w-4 mr-1" />
+                        Duplicate
+                      </button>
+                      {!publishLocked && (
+                        <button
+                          type="button"
+                          className="flex-1 flex items-center justify-center px-2.5 py-2 rounded-lg border border-pacific bg-pacific/10 text-pacific hover:bg-pacific/20 hover:text-vanilla transition-colors"
+                        >
+                          <Send className="h-4 w-4 mr-1" />
+                          Publish
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -54,7 +54,6 @@ Priority legend: P0 = urgent/blocker, P1 = high, P2 = medium, P3 = nice-to-have.
 - [ ] [P1][M5] Enable editing user profile details (name, email, settings) and persist updates to Supabase.
 - [ ] [P2][M5] Add profile image upload on the profile page.
 - [ ] [P3][M5] Fix profile page left-side spacing so long names/emails fit cleanly.
-- [ ] [P2][M5] Wire the “Connect Instagram” button to the actual Instagram/FB auth flow (currently disabled).
 - [ ] [P1][M5] Enable payment method update (Stripe).
 - [ ] [P1][M5] Fix cancel plan logic to correctly downgrade to the free plan.
 
@@ -62,6 +61,8 @@ Priority legend: P0 = urgent/blocker, P1 = high, P2 = medium, P3 = nice-to-have.
 - [ ] [P2][M6] Add a retro-style top-right “Publish” button with bouncing arrow; keep it inactive until the primary publish action arms it.
 - [ ] [P3][M6] Review and adjust the readiness panel on the publish card (final design/need).
 - [ ] [P2][M6] Remove the “Step Four, Publish” label from the top-right of the page.
+- [ ] [P1][M6] Add destination selector on Publish (choose which connected Meta destination to post to; default preselected).
+- [ ] [P1][M6] Implement Meta publishing in code (Supabase Edge Function) using `connected_account` + secrets (no n8n).
 
 ### AI & Integrations
 - [ ] [P1][M7] Implement OpenAI API support for AI generations.
@@ -90,6 +91,9 @@ Priority legend: P0 = urgent/blocker, P1 = high, P2 = medium, P3 = nice-to-have.
 ### Publish Page
 - [x] [P2][M6] Match the publish-page preview card dimensions to the generate-page preview card (synced aspect ratios/arrows with Generate).
 - [x] [P2][M6] Update the SlideFlow Studio card copy/layout on Publish to reflect current capabilities (crop/resize, AI background swap/remove, on-brand overlays, PNG export) and align CTA styling.
+
+### Profile & Billing
+- [x] [P2][M5] Implement Meta connection (Instagram Business + Facebook Page) with multi-destination support, default selection, and disconnect.
 
 ### UI Polish
 - [x] [P2][M3] Generate/Publish preview polish: added IG aspect selector (4:5 default, 1:1), Instagram-style dots, resized previews, and matching arrow placement; Publish now mirrors Generate aspect choice.

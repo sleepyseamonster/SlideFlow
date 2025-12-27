@@ -252,9 +252,9 @@ export default function CalendarPage() {
     () =>
       carousels.filter((carousel) => {
         const status = carousel.status?.toLowerCase();
-        const isPosted = status === 'posted';
+        const isPublished = status === 'published' || status === 'posted';
         const isScheduled = status === 'scheduled' || Boolean(scheduled[carousel.id]);
-        return !isPosted && !isScheduled;
+        return !isPublished && !isScheduled;
       }),
     [carousels, scheduled]
   );
@@ -309,6 +309,8 @@ export default function CalendarPage() {
 
       const next: Record<string, ScheduledEntry> = {};
       (data || []).forEach((row) => {
+        const carousel = carousels.find((item) => item.id === row.carousel_id);
+        if ((carousel?.status || '').toLowerCase() === 'published') return;
         const scheduledAt = row.scheduled_at as string;
         const dateKey = formatDateKeyWithZone(scheduledAt, row.timezone || timeZoneLabel);
         const displayTime = formatDisplayTime(scheduledAt, row.timezone || timeZoneLabel);
@@ -317,7 +319,7 @@ export default function CalendarPage() {
           dateKey,
           scheduledAt,
           displayTime,
-          title: carousels.find((c) => c.id === row.carousel_id)?.title || 'Scheduled carousel',
+          title: carousel?.title || 'Scheduled carousel',
           thumbnail: thumbnails[row.carousel_id],
           status: row.status,
           timezone: row.timezone || timeZoneLabel,
@@ -361,6 +363,12 @@ export default function CalendarPage() {
       const found = carousels.find((c) => c.id === pendingSchedule.carouselId);
       if (!found) {
         setShowModal(false);
+        return;
+      }
+      if ((found.status || '').toLowerCase() === 'published') {
+        setToast('Published carousels cannot be scheduled.');
+        setShowModal(false);
+        setTimeout(() => setToast(null), 3000);
         return;
       }
       const iso = toUtcISOString(pendingSchedule.dateKey, timeInput, timeZoneLabel);

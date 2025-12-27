@@ -1,8 +1,8 @@
 # SlideFlow Overview
 
 ## Purpose & Positioning
-- SlideFlow is a fast, simple, AI-powered tool for turning ideas into Instagram carousels—without graphic design or image editing.
-- It focuses on assembling, captioning, scheduling, and publishing carousels quickly. It is **not** a graphics tool, image editor, or AI image generator.
+- SlideFlow is a fast, simple, AI-powered tool for turning ideas into Instagram carousels—without heavy graphic design software.
+- It focuses on assembling, captioning, scheduling, and publishing carousels quickly, with a lightweight Studio for simple image prep. It is **not** a full graphics tool, advanced image editor, or AI image generator.
 - Built for creators, small business owners, coaches/consultants, marketers, and agencies who want production-quality carousels with minimal effort.
 - Users authenticate via Supabase, subscribe via Stripe, and work in single-user workspaces (no sharing yet).
 
@@ -16,6 +16,7 @@
 - Fast carousel creation with drag-and-drop story building.
 - No design skills required; saved brand colors/fonts keep visuals consistent.
 - AI-powered captions tuned to the user’s images and prompts.
+- Simple image cleanup and on-brand overlays via Studio.
 - Direct Instagram posting and scheduling for consistency.
 - Export individual slides any time for reuse.
 
@@ -36,8 +37,8 @@
 7. Export slides when needed.
 
 ## Boundaries & MVP Scope
-- **Does:** assemble/organize slides, generate captions with AI, store brand colors/fonts, post/schedule to Instagram, export updated images.
-- **Does not:** edit/manipulate images, perform advanced layouts, inpaint/outpaint, create images from scratch, or offer complex typography/retouching suites.
+- **Does:** assemble/organize slides, generate captions with AI, store brand colors/fonts, perform light image prep in Studio, post/schedule to Instagram, export updated images.
+- **Does not:** perform advanced image editing or multi-layer design, inpaint/outpaint, create images from scratch, or offer complex typography/retouching suites.
 - **MVP components:**
   - Accounts: Supabase Auth (Google live; others later), one account per user.
   - Billing: Stripe subscriptions (entry tier ~$9/mo) tied to Supabase users.

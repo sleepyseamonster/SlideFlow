@@ -44,7 +44,7 @@ The right-hand list is a structured, minimal view of the user’s completed caro
 - Carousels with status `ready` (future behavior; for now everything is `draft`)
 - Carousels that are **not yet posted**
 
-Any carousel with status `posted` (or `published`) **does not appear** in this list.
+Any carousel with status `posted` (or `published`) **does not appear** in this list and cannot be scheduled.
 
 > Current MVP note: At this stage of SlideFlow, all carousels will appear with a `draft` status in the dashboard until we implement the full status pipeline. That means every existing carousel will show up in this list.
 
@@ -174,13 +174,13 @@ We already have carousel statuses defined at the database level (`draft`, `ready
 2. **Scheduled** → (Conceptually) a draft or ready carousel that now has a scheduled date/time in the calendar.
 3. **Posted** → After a successful Instagram post, the carousel’s status becomes `posted`, and:
    - It is removed from the right-hand list
-   - It can remain visible on the calendar as a historical entry (optional for MVP)
+   - It is removed from the calendar view and cannot be scheduled again
 
 MVP behavior in practice:
 
 - All carousels start as `draft`.
 - Scheduling does not immediately change the status name in the UI yet (we can still label them visually as "Scheduled" on the calendar), but we plan to map this to `ready`/`posted` later.
-- Once posting is confirmed, status moves to `posted`, and the carousel no longer appears in the "to schedule" list.
+- Once posting is confirmed, status moves to `posted`, and the carousel no longer appears in the "to schedule" list or on the calendar.
 
 ---
 
@@ -201,4 +201,3 @@ The goal is to ship a **simple, reliable scheduling calendar** that:
 - Clearly displays what is scheduled
 
 This pairs directly with SlideFlow’s core promise: upload, arrange, caption, and publish carousels without touching a design tool.
-

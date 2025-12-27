@@ -1,0 +1,70 @@
+# SlideFlow Terms of Service (Draft)
+
+**Effective date:** _[Month Day, Year]_  
+**Company:** SlideFlow (placeholder legal entity)  
+**Address:** _[123 Placeholder Ave, Phoenix, AZ 85000]_  
+**Contact:** _[support@placeholder.com]_  
+
+> Replace italicized placeholders with final business details before publishing.
+
+---
+
+## 1. Acceptance of Terms
+By creating a SlideFlow account, accessing our services, or connecting Meta (Facebook/Instagram), you agree to these Terms of Service (“Terms”) and the Privacy Policy. If you do not agree, do not use SlideFlow.
+
+## 2. Description of Service
+SlideFlow provides tools to organize media, design Instagram carousels, generate captions, and publish/schedule content to Instagram via Meta’s APIs. Features may evolve over time. You are responsible for:
+- Maintaining the security of your login credentials.
+- Ensuring you have the rights to upload and publish the content you submit.
+- Complying with Meta’s terms, community standards, and any applicable laws.
+
+## 3. Eligibility & Accounts
+You must be at least 13 years old (or the age required in your jurisdiction) to use SlideFlow. You agree to provide accurate information and notify us of unauthorized use of your account. We may suspend or terminate accounts that violate these Terms.
+
+## 4. User Content & Licenses
+You retain ownership of content you upload or create. You grant SlideFlow a limited license to host, process, and transmit that content solely to provide the Service (including publishing via Meta). You represent that your content does not infringe any third-party rights and complies with applicable laws.
+
+## 5. Plans, Payments, and Billing
+Paid plans may be billed via Stripe or another payment processor. Fees, billing intervals, and cancellation terms are described during checkout. Taxes are your responsibility. Subscription changes (upgrade/downgrade/cancel) take effect according to the plan policies.
+
+## 6. Acceptable Use
+You agree not to:
+- Upload or publish unlawful, obscene, infringing, or abusive content.
+- Attempt to gain unauthorized access to SlideFlow or other users’ data.
+- Misuse Meta Tokens or attempt to circumvent Meta policies.
+- Interfere with the Service or use bots/scripts to overload it.
+
+We may remove content or suspend accounts that violate these rules.
+
+## 7. Meta Integration
+SlideFlow uses Facebook Login and Instagram Graph API. You are responsible for securing your Meta account and ensuring you only connect assets you are authorized to manage. Meta may review your use and revoke permissions; SlideFlow is not responsible for Meta’s decisions or outages.
+
+## 8. Service Availability & Modifications
+We aim to keep SlideFlow available but do not guarantee uninterrupted service. We may change, suspend, or discontinue features (temporarily or permanently) with or without notice. We are not liable for any modification or suspension of the Service.
+
+## 9. Termination
+You may stop using SlideFlow at any time. We may terminate or suspend access immediately, without prior notice, for any breach of these Terms. Sections that by their nature should survive termination (e.g., ownership, disclaimers, limitations of liability, indemnity) will survive.
+
+## 10. Disclaimers
+SLIDEFLOW IS PROVIDED “AS IS” AND “AS AVAILABLE.” WE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED (INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT). WE DO NOT WARRANT THAT THE SERVICE WILL BE ERROR-FREE OR UNINTERRUPTED.
+
+## 11. Limitation of Liability
+To the maximum extent permitted by law, SlideFlow and its officers, directors, employees, and agents shall not be liable for indirect, incidental, consequential, or punitive damages, or for any loss of profits or revenues, whether incurred directly or indirectly. Our total liability arising from or related to the Service will not exceed the fees you paid for SlideFlow in the twelve months before the claim.
+
+## 12. Indemnification
+You agree to indemnify and hold SlideFlow harmless from any claims, damages, liabilities, and expenses (including reasonable attorneys’ fees) arising from your content, your use of the Service, or your violation of these Terms.
+
+## 13. Governing Law & Dispute Resolution
+These Terms are governed by the laws of the State of Arizona, USA, without regard to conflict-of-law principles. Any disputes will be resolved in the state or federal courts located in Maricopa County, Arizona, and you consent to their jurisdiction.
+
+## 14. Changes to Terms
+We may update these Terms from time to time. We will post the updated Terms and revise the “Effective date.” Continued use of SlideFlow after changes become effective constitutes acceptance of the new Terms.
+
+## 15. Contact
+SlideFlow  
+_[123 Placeholder Ave, Phoenix, AZ 85000]_  
+Email: _[support@placeholder.com]_
+
+---
+
+**Next steps:** Publish this file (after replacing placeholders) to a stable URL and provide that URL to Meta as your Terms of Service link.

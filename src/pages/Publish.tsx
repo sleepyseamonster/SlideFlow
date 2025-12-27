@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Instagram, ChevronLeft, ChevronRight, CheckCircle2, Clock3, Check, Share2, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Instagram, ChevronLeft, ChevronRight, CheckCircle2, Clock3, Check, Sparkles, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import PageDots from '../components/PageDots';
 import { useCarousel, type Carousel } from '../contexts/CarouselContext';
@@ -13,6 +13,17 @@ type LocationState = {
   caption?: string;
   carousel?: Carousel;
   aspectRatio?: AspectRatio;
+  isAiGenerated?: boolean;
+};
+
+type ConnectedAccount = {
+  id: string;
+  ig_user_id: string;
+  ig_username: string | null;
+  page_id: string;
+  page_name: string | null;
+  is_primary: boolean;
+  connected_at: string;
 };
 
 const TOTAL_APP_PAGES = 5;
@@ -25,6 +36,7 @@ export default function Publish() {
   const navState = (location.state as LocationState) || {};
   const navCarousel = navState.carousel;
   const navCaption = navState.caption;
+  const navAiGenerated = navState.isAiGenerated;
 
   const { currentCarousel, setCurrentCarousel, fetchCarousel, updateCarousel } = useCarousel();
   const [orderedSlides, setOrderedSlides] = React.useState(navCarousel?.slides ?? currentCarousel?.slides ?? []);
@@ -36,13 +48,22 @@ export default function Publish() {
   const [shareToInstagram, setShareToInstagram] = React.useState(true);
   const [shareToFacebook, setShareToFacebook] = React.useState(false);
   const [scheduleMode, setScheduleMode] = React.useState<'now' | 'later'>('now');
-  const [selectedAspect, setSelectedAspect] = React.useState<AspectRatio>(navState.aspectRatio ?? '4:5');
+  const [selectedAspect] = React.useState<AspectRatio>(navState.aspectRatio ?? '4:5');
   const [nextArmed, setNextArmed] = React.useState(false);
   const [platformError, setPlatformError] = React.useState<string | null>(null);
   const [showDraftModal, setShowDraftModal] = React.useState(false);
   const [draftTitle, setDraftTitle] = React.useState('');
   const [draftSaving, setDraftSaving] = React.useState(false);
   const [draftError, setDraftError] = React.useState<string | null>(null);
+  const [publishing, setPublishing] = React.useState(false);
+  const [publishError, setPublishError] = React.useState<string | null>(null);
+  const [connectedAccounts, setConnectedAccounts] = React.useState<ConnectedAccount[]>([]);
+  const [connectedAccountsLoading, setConnectedAccountsLoading] = React.useState(false);
+  const [connectedAccountsError, setConnectedAccountsError] = React.useState<string | null>(null);
+  const [selectedConnectedAccountId, setSelectedConnectedAccountId] = React.useState<string | null>(() => user?.connectedAccountId ?? null);
+  const [isAiGenerated, setIsAiGenerated] = React.useState(Boolean(navAiGenerated));
+  const [showAccountPicker, setShowAccountPicker] = React.useState(false);
+  const accountPickerContainerRef = React.useRef<HTMLDivElement | null>(null);
   const weekOverview = React.useMemo(() => {
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -70,6 +91,74 @@ export default function Publish() {
   }, []);
 
   const captionHydrated = React.useRef(false);
+
+  const loadConnectedAccounts = React.useCallback(async () => {
+    if (!user?.id) return;
+    setConnectedAccountsLoading(true);
+    setConnectedAccountsError(null);
+    try {
+      const { data, error } = await supabase
+        .from('connected_account')
+        .select('id, ig_user_id, ig_username, page_id, page_name, is_primary, connected_at')
+        .eq('user_id', user.id)
+        .eq('platform', 'instagram')
+        .is('revoked_at', null)
+        .order('connected_at', { ascending: true });
+
+      if (error) throw error;
+      const accounts = (data as ConnectedAccount[]) || [];
+      setConnectedAccounts(accounts);
+
+      const primary = accounts.find((account) => account.is_primary) || accounts[0] || null;
+      setSelectedConnectedAccountId((prev) => {
+        if (prev && accounts.some((account) => account.id === prev)) return prev;
+        return primary?.id ?? null;
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load connected accounts.';
+      setConnectedAccountsError(msg);
+      setConnectedAccounts([]);
+    } finally {
+      setConnectedAccountsLoading(false);
+    }
+  }, [user?.id]);
+
+  React.useEffect(() => {
+    if (!user?.id) return;
+    void loadConnectedAccounts();
+  }, [loadConnectedAccounts, user?.id]);
+
+  React.useEffect(() => {
+    if (!user?.connectedAccountId) return;
+    setSelectedConnectedAccountId((prev) => prev ?? user.connectedAccountId ?? null);
+  }, [user?.connectedAccountId]);
+
+  React.useEffect(() => {
+    if (!showAccountPicker) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const container = accountPickerContainerRef.current;
+      const target = event.target as Node | null;
+      if (!container || !target) return;
+      if (!container.contains(target)) setShowAccountPicker(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowAccountPicker(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showAccountPicker]);
+
+  React.useEffect(() => {
+    if (!publishError) return;
+    setPublishError(null);
+  }, [selectedConnectedAccountId, shareToInstagram, shareToFacebook]);
 
   // Persist caption changes (debounced) so dashboard reflects saved caption.
   React.useEffect(() => {
@@ -211,7 +300,29 @@ export default function Publish() {
 
   const readyToPublish = orderedSlides.length > 0;
   const primaryCtaLabel = scheduleMode === 'later' ? 'Go to calendar' : 'Publish';
-  const nextButtonEnabled = readyToPublish && nextArmed && scheduleMode === 'now';
+  const hasConnectedAccount = connectedAccounts.length > 0;
+  const nextButtonEnabled = readyToPublish && nextArmed && scheduleMode === 'now' && hasConnectedAccount;
+  const isPublished = (currentCarousel?.status || '').toLowerCase() === 'published';
+  const publishLockedByStatus = isPublished;
+  const publishLocked = publishLockedByStatus;
+  const nextButtonInteractive = nextButtonEnabled && !publishing && !publishLocked;
+
+  const selectedConnectedAccount = React.useMemo(() => {
+    if (selectedConnectedAccountId) {
+      const found = connectedAccounts.find((account) => account.id === selectedConnectedAccountId);
+      if (found) return found;
+    }
+    return connectedAccounts.find((account) => account.is_primary) || connectedAccounts[0] || null;
+  }, [connectedAccounts, selectedConnectedAccountId]);
+
+  const instagramHandleLabel = selectedConnectedAccount?.ig_username
+    ? `@${selectedConnectedAccount.ig_username}`
+    : user?.instagramUsername
+      ? `@${user.instagramUsername}`
+      : selectedConnectedAccount?.ig_user_id || user?.instagramBusinessAccountId || 'Not connected';
+
+  const facebookPageLabel =
+    selectedConnectedAccount?.page_name || user?.facebookPageName || selectedConnectedAccount?.page_id || user?.facebookPageId || 'Not connected';
 
   const handleToggleInstagram = () => {
     if (shareToInstagram && !shareToFacebook) {
@@ -334,6 +445,152 @@ export default function Publish() {
       setDraftError('Failed to save draft. Please try again. ' + (err instanceof Error ? err.message : ''));
     } finally {
       setDraftSaving(false);
+    }
+  };
+
+  const handlePublishCarousel = async () => {
+    if (!nextButtonEnabled || publishing) return;
+    if (publishLockedByStatus) {
+      setPublishError('This carousel has already been published.');
+      return;
+    }
+    if (!currentCarousel?.id) {
+      setPublishError('Missing carousel data. Please refresh and try again.');
+      return;
+    }
+    if (!selectedConnectedAccountId) {
+      setPublishError('Select a posting account before publishing.');
+      setShowAccountPicker(true);
+      return;
+    }
+    if (!shareToInstagram && !shareToFacebook) {
+      setPlatformError('Select at least one platform.');
+      setPublishError('Select at least one platform to publish.');
+      return;
+    }
+
+    setPublishing(true);
+    setPublishError(null);
+    let responseErrorCode: string | null = null;
+    let retryAfterSeconds: number | null = null;
+
+    const slides = orderedSlides.map((slide, index) => ({
+      id: slide.id,
+      position: index + 1,
+      image: slide.image,
+      originalMedia: slide.originalMedia ?? null,
+    }));
+
+    const parseFunctionError = async (err: unknown) => {
+      const errorContext = err as { context?: { body?: unknown } };
+      const contextBody = errorContext?.context?.body;
+      let rawBody = '';
+
+      if (typeof contextBody === 'string') {
+        rawBody = contextBody;
+      } else if (contextBody && typeof (contextBody as ReadableStream).getReader === 'function') {
+        rawBody = await new Response(contextBody as ReadableStream).text();
+      } else if (contextBody) {
+        rawBody = String(contextBody);
+      }
+
+      if (!rawBody) {
+        return { message: null, code: null, retryAfterSeconds: null };
+      }
+
+      try {
+        const parsed = JSON.parse(rawBody) as {
+          error?: string;
+          code?: string;
+          details?: string;
+          retry_after_seconds?: number;
+        };
+        const detailSuffix = parsed.details ? ` (${parsed.details})` : '';
+        return {
+          message: parsed.error ? `${parsed.error}${detailSuffix}` : rawBody,
+          code: parsed.code ?? null,
+          retryAfterSeconds: typeof parsed.retry_after_seconds === 'number' ? parsed.retry_after_seconds : null,
+        };
+      } catch {
+        return { message: rawBody, code: null, retryAfterSeconds: null };
+      }
+    };
+
+    try {
+      const { data, error } = await supabase.functions.invoke('publish-carousel', {
+        body: {
+          carouselId: currentCarousel.id,
+          connectedAccountId: selectedConnectedAccountId,
+          caption: caption.trim(),
+          is_ai_generated: isAiGenerated,
+          platforms: {
+            instagram: shareToInstagram,
+            facebook: shareToFacebook,
+          },
+          slides,
+        },
+      });
+
+      if (error) {
+        const parsed = await parseFunctionError(error);
+        responseErrorCode = parsed.code ?? null;
+        retryAfterSeconds = parsed.retryAfterSeconds;
+        if (parsed.message) {
+          const structured = new Error(
+            responseErrorCode ? `${parsed.message} (${responseErrorCode})` : parsed.message
+          ) as Error & {
+            code?: string;
+          };
+          structured.code = responseErrorCode ?? undefined;
+          throw structured;
+        }
+        throw error;
+      }
+      if (data && typeof data === 'object' && 'error' in data && data.error) {
+        throw new Error(String(data.error));
+      }
+      const updated = await updateCarousel(currentCarousel.id, { status: 'published' });
+      if (!updated) {
+        console.warn('Publish succeeded, but status update failed.');
+      }
+      navigate('/dashboard');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Publish failed. Please try again.';
+      const errCode =
+        responseErrorCode ||
+        (typeof err === 'object' && err && 'code' in err ? String((err as { code?: string }).code) : null);
+      console.error('Publish failed', err);
+
+      if (errCode === 'publish_partial') {
+        setPublishError(`${message} Retries are disabled for safety.`);
+        setCurrentCarousel((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'published',
+                publish_error: message,
+              }
+            : prev
+        );
+        return;
+      }
+
+      if (errCode === 'publish_failed') {
+        setPublishError(`${message} You can try again.`);
+        setCurrentCarousel((prev) =>
+          prev
+            ? {
+                ...prev,
+                publish_error: message,
+              }
+            : prev
+        );
+        return;
+      }
+
+      setPublishError(message);
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -490,12 +747,16 @@ export default function Publish() {
             <div className="flex flex-col gap-4">
               <div className="relative">
                 <div className="absolute right-4 -top-4 z-30 flex items-center gap-3 translate-x-[8px] translate-y-[7px] pointer-events-none">
-                  {!nextButtonEnabled && (
-                    <span className="text-xs text-vanilla/60 whitespace-nowrap">
-                      {scheduleMode === 'later'
-                        ? 'Hint: To publish now, select Publish Now, then click Publish.'
-                        : 'Hint: Click Publish to continue.'}
-                    </span>
+                  {publishing ? (
+                    <span className="text-xs text-vanilla/70 whitespace-nowrap">Publishing…</span>
+                  ) : (
+                    !nextButtonEnabled && (
+                      <span className="text-xs text-vanilla/60 whitespace-nowrap">
+                        {scheduleMode === 'later'
+                          ? 'Hint: To publish now, select Publish Now, then click Publish.'
+                          : 'Hint: Click Publish to continue.'}
+                      </span>
+                    )
                   )}
                   <div className="relative w-24 h-20 group pointer-events-auto">
                     <div
@@ -504,15 +765,16 @@ export default function Publish() {
                     />
                     <button
                       type="button"
-                      disabled={!nextButtonEnabled}
+                      onClick={handlePublishCarousel}
+                      disabled={!nextButtonInteractive}
                       className={`group relative z-10 flex items-center justify-center rounded-[4px] w-full h-full overflow-hidden border transition-transform duration-200 ease-out transform-gpu ${
-                        nextButtonEnabled
+                        nextButtonInteractive
                           ? 'border-transparent shadow-lg shadow-pacific/30 hover:shadow-pacific/50 group-hover:translate-x-1'
                           : 'bg-surface opacity-70 border-charcoal/50 cursor-not-allowed pointer-events-none shadow-none'
                       }`}
                       aria-label="Next step"
-                      tabIndex={nextButtonEnabled ? 0 : -1}
-                      aria-disabled={!nextButtonEnabled}
+                      tabIndex={nextButtonInteractive ? 0 : -1}
+                      aria-disabled={!nextButtonInteractive}
                     >
                       <img
                         src={nextButtonEnabled ? '/Next%20Button.png' : '/Deactivated%20Next%20Button.png'}
@@ -532,7 +794,7 @@ export default function Publish() {
                     alt=""
                     aria-hidden="true"
                     className={`w-4 h-auto sf-arrow-wiggle select-none pointer-events-none transition-opacity duration-150 ${
-                      nextButtonEnabled ? 'opacity-100' : 'opacity-0'
+                      nextButtonInteractive ? 'opacity-100' : 'opacity-0'
                     }`}
                   />
                 </div>
@@ -633,6 +895,163 @@ export default function Publish() {
 
                   </div>
 
+                  <div className="rounded-lg border border-charcoal/60 bg-surface-alt p-4 space-y-2">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold">AI-generated content</p>
+                        <p className="text-xs text-vanilla/60">Disclose when AI created or edited this carousel.</p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isAiGenerated}
+                        onClick={() => setIsAiGenerated((prev) => !prev)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                          isAiGenerated ? 'bg-pacific border-pacific/80' : 'bg-surface border-charcoal/60'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-vanilla transition-transform ${
+                            isAiGenerated ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-vanilla/60">
+                      We log this flag and add a disclosure line to your caption for compliance.
+                    </p>
+                  </div>
+
+                  <div ref={accountPickerContainerRef} className="rounded-lg border border-charcoal/60 bg-surface-alt p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-semibold">Posting account</p>
+                        <p className="text-xs text-vanilla/60">
+                          Uses your default destination unless you choose another for this publish.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 sm:justify-end">
+                        {connectedAccounts.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAccountPicker((prev) => !prev)}
+                            className="px-3 py-1.5 rounded-md text-xs font-semibold border border-charcoal/60 bg-surface hover:border-pacific/60 transition-colors"
+                          >
+                            {showAccountPicker ? 'Close' : 'Change'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void loadConnectedAccounts()}
+                          disabled={connectedAccountsLoading}
+                          className="px-3 py-1.5 rounded-md text-xs font-semibold border border-charcoal/60 bg-surface hover:border-pacific/60 transition-colors disabled:opacity-60"
+                        >
+                          {connectedAccountsLoading ? 'Loading…' : 'Refresh'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {connectedAccountsError && (
+                      <div className="text-[11px] text-red-300">{connectedAccountsError}</div>
+                    )}
+                    {publishError && (
+                      <div className="text-[11px] text-red-300">{publishError}</div>
+                    )}
+                    {publishLocked && !publishing && !publishError && (
+                      <div className="text-[11px] text-vanilla/60">This carousel has already been published.</div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-md text-sm border bg-surface text-vanilla/80 ${
+                          shareToInstagram ? 'border-charcoal/50' : 'border-charcoal/70 opacity-50'
+                        }`}
+                      >
+                        <Instagram className="h-4 w-4 text-pacific" />
+                        <span className="whitespace-nowrap">Instagram</span>
+                        <span className="text-vanilla/90 font-medium truncate max-w-[220px]">{instagramHandleLabel}</span>
+                      </span>
+
+                      <span
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-md text-sm border bg-surface text-vanilla/80 ${
+                          shareToFacebook ? 'border-charcoal/50' : 'border-charcoal/70 opacity-50'
+                        }`}
+                      >
+                        <span className="h-2 w-2 rounded-full bg-pacific/80" aria-hidden="true" />
+                        <span className="whitespace-nowrap">Facebook</span>
+                        <span className="text-vanilla/90 font-medium truncate max-w-[260px]">{facebookPageLabel}</span>
+                      </span>
+
+                    </div>
+
+                    {!user?.instagramConnected && connectedAccounts.length === 0 && !connectedAccountsLoading ? (
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-md border border-charcoal/60 bg-ink/50 px-3 py-3">
+                        <div className="text-sm text-vanilla/70">
+                          No Meta destination connected yet. Connect Instagram + Facebook in Profile to publish.
+                        </div>
+                        <Link to="/profile" className="sf-btn-secondary px-3 py-2 text-sm">
+                          Open Profile
+                        </Link>
+                      </div>
+                    ) : connectedAccounts.length > 1 && showAccountPicker ? (
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-vanilla/80">Choose a different destination</label>
+                        <div
+                          role="listbox"
+                          aria-label="Connected destinations"
+                          className="rounded-xl border border-charcoal/60 bg-ink/60 overflow-hidden max-h-56 overflow-y-auto shadow-[0_16px_50px_-34px_rgba(0,0,0,0.75)]"
+                        >
+                          {connectedAccounts.map((account) => {
+                            const isSelected = account.id === (selectedConnectedAccount?.id ?? '');
+                            const igLabel = account.ig_username ? `@${account.ig_username}` : account.ig_user_id;
+                            const pageLabel = account.page_name || account.page_id;
+
+                            return (
+                              <button
+                                key={account.id}
+                                type="button"
+                                role="option"
+                                aria-selected={isSelected}
+                                onClick={() => {
+                                  setSelectedConnectedAccountId(account.id);
+                                  setShowAccountPicker(false);
+                                }}
+                                className={`w-full text-left px-3 py-3 flex items-start justify-between gap-3 border-b border-charcoal/40 last:border-b-0 transition-colors focus:outline-none focus:ring-2 focus:ring-pacific/50 ${
+                                  isSelected ? 'bg-surface/80' : 'bg-transparent hover:bg-surface/60'
+                                }`}
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Instagram className="h-4 w-4 text-pacific flex-none" />
+                                    <span className="text-sm font-semibold text-vanilla/90 truncate">
+                                      {igLabel}
+                                    </span>
+                                    {account.is_primary && (
+                                      <span className="text-[10px] px-2 py-0.5 rounded-md border border-pacific/40 bg-pacific/15 text-vanilla flex-none">
+                                        Default
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-vanilla/60 truncate mt-1">
+                                    Facebook Page: {pageLabel}
+                                  </div>
+                                </div>
+                                {isSelected && <Check className="h-4 w-4 text-pacific flex-none mt-0.5" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="text-[11px] text-vanilla/60">
+                          This does not change your default. Update defaults in{' '}
+                          <Link to="/profile" className="text-pacific hover:text-vanilla underline underline-offset-2">
+                            Profile Settings
+                          </Link>
+                          .
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
                   {scheduleMode === 'later' && (
                     <div className="rounded-md border border-charcoal/50 bg-ink/60 px-4 py-3 text-xs text-vanilla/70 space-y-2">
                       <div className="flex items-center justify-between">
@@ -675,21 +1094,21 @@ export default function Publish() {
                         Go to Calendar
                       </Link>
                     ) : (
-                      <button
-                        type="button"
-                        disabled={!readyToPublish}
-                        onClick={async () => {
-                          if (!readyToPublish || !currentCarousel?.id) return;
-                          setNextArmed(true);
-                          await updateCarousel(currentCarousel.id, { status: 'ready' });
-                          setCurrentCarousel((prev) => (prev ? { ...prev, status: 'ready' } : prev));
-                        }}
-                        className={`inline-flex items-center gap-2 px-5 py-2 rounded-md font-semibold border transition-all order-2 ${
-                          readyToPublish
-                            ? 'bg-[#2f9f56] text-vanilla border-[#2f9f56] shadow-soft hover:bg-[#38b865] hover:border-[#38b865] hover:shadow-[0_14px_40px_rgba(56,184,101,0.3)]'
-                            : 'bg-surface text-vanilla/60 border-charcoal/60 cursor-not-allowed'
-                        }`}
-                      >
+                    <button
+                      type="button"
+                      disabled={!readyToPublish || !hasConnectedAccount}
+                      onClick={async () => {
+                        if (!readyToPublish || !hasConnectedAccount || !currentCarousel?.id) return;
+                        setNextArmed(true);
+                        await updateCarousel(currentCarousel.id, { status: 'ready' });
+                        setCurrentCarousel((prev) => (prev ? { ...prev, status: 'ready' } : prev));
+                      }}
+                      className={`inline-flex items-center gap-2 px-5 py-2 rounded-md font-semibold border transition-all order-2 ${
+                        readyToPublish && hasConnectedAccount
+                          ? 'bg-[#2f9f56] text-vanilla border-[#2f9f56] shadow-soft hover:bg-[#38b865] hover:border-[#38b865] hover:shadow-[0_14px_40px_rgba(56,184,101,0.3)]'
+                          : 'bg-surface text-vanilla/60 border-charcoal/60 cursor-not-allowed'
+                      }`}
+                    >
                         <Check className="h-4 w-4" />
                         {readyToPublish ? 'Ready?' : primaryCtaLabel}
                       </button>
