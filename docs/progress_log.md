@@ -17,7 +17,7 @@
 - SlideBoard “Slide” button restyled with provided active/deactivated assets, persistent shadow, hover shift right, resized arrow, larger label, and hint text when inactive; position nudged down for alignment.
 - Results page “Review” button now mirrors SlideBoard styling (active/disabled images, shadow, hint on inactive, arrow stays aligned) with placeholder navigation for the future review page.
 - Added “Generate” button to the prompt card on Results: disabled until prompt has text; clicking currently copies the prompt text into the caption as a pre-AI placeholder.
-- Media Library bulk delete flow updated to refresh session, await deletes, show deleting state; documented persistent bulk-delete failure and multi-import-to-SlideBoard issue in `docs/known_issues.md`.
+- Media Library bulk delete flow updated to refresh session, await deletes, show deleting state; documented persistent bulk-delete failure and multi-import-to-SlideBoard issue in `docs/todo.md`.
 - Updated static assets with latest `Next Button.png` and `Deactivated Next Button.png`.
 
 ## 2025-02-05
@@ -54,7 +54,7 @@
   - Updated `docs/sop-carousel-persistence.md` to reflect the new local-only SlideBoard and the Generate Caption–based persistence flow.
   - Updated `docs/slideboard_usage.md` to describe the current upload, reordering, and Next-button behavior.
   - Added `docs/slideboard_ux_spec.md` as a detailed UX + behavior reference for the SlideBoard, including data model, drag rules, and edge cases.
-  - Synced `docs/backlog.md` with current work (marked inline dashboard preview + SlideBoard persistence issue as done) and added a “Dev quick-start & invariants” section to the SlideBoard UX spec for future engineers/Bolt.
+  - Synced `docs/todo.md` with current work (marked inline dashboard preview + SlideBoard persistence issue as done) and added a “Dev quick-start & invariants” section to the SlideBoard UX spec for future engineers/Bolt.
 
 ## 2025-02-09
 - Generate Caption: added IG aspect selector (4:5 default, 1:1), Instagram-style dots, resized preview, lighter arrows; aspect choice passes to Publish for matching preview sizing/arrows/dots.
@@ -120,7 +120,7 @@
   - Added `/meta/callback` route to complete OAuth and finalize connection via the Edge Function.
 - Multi-destination UX: users can view all connected destinations, set a default, refresh the list, and disconnect accounts from Profile.
 - Business-only enforcement: the connect pipeline filters out non-BUSINESS Instagram accounts.
-- Docs: added `docs/meta_connection_setup.md`, updated `docs/supabase_schema.md`, `docs/n8n_workflows.md` (legacy note), `docs/README.md`, and `docs/backlog.md`.
+- Docs: added `docs/meta_connection_setup.md`, updated `docs/supabase_schema.md`, `docs/n8n_workflows.md` (legacy note), `docs/README.md`, and `docs/todo.md`.
 
 ## 2025-12-19 (legacy flow: superseded by server-side OAuth)
 - Meta connect hardening (legacy `meta-connect` + `/meta/callback` path):
@@ -128,7 +128,7 @@
   - MetaCallback now guards against dev/StrictMode double-run to stop repeated `meta-connect` calls.
   - Added debug payload to `meta-connect` responses (`pagesWithTokens`, `rawCandidateCount`, `igFetchErrors`) for faster troubleshooting.
 - Disconnect RPC fix: added migration to drop/recreate `revoke_connected_account` with a safe parameter and wrapper to preserve the original signature; documented the exact SQL in `docs/meta_connection_context.md`.
-- Docs: created `docs/meta_connection_context.md` (full context, troubleshooting, deploy steps, RPC fix); logged Meta connect/disconnect issues in `docs/known_issues.md`.
+- Docs: created `docs/meta_connection_context.md` (full context, troubleshooting, deploy steps, RPC fix); logged Meta connect/disconnect issues in `docs/todo.md`.
 
 ## 2025-12-20
 - Publish page: added “Posting account” selector UI with a custom themed picker, refresh controls, and clear selected-destination display tied to the Publish-page selection.
@@ -198,6 +198,12 @@
 - Fonts: expanded the registry with additional Google Fonts and updated Brand Profile to use a custom font dropdown so each option previews in its actual font.
 - Brand Profile: changed the custom font dropdown to an absolute-positioned overlay so opening it doesn’t push the card content downward.
 - Brand Profile: fixed dropdown z-order by rendering the menu in a portal with a high z-index so it always overlays other cards (e.g., Presets).
+
+## 2025-12-24
+- Studio: Add Text “Apply” now renders the current canvas, saves to Supabase as a Studio item, and appends the new slide in the filmstrip for immediate reuse. Image Overlay gains the same Apply-to-Studio flow.
+- Studio: Image Overlay tool rebuilt for multiple draggable layers—each overlay can be added via upload/drop, selected from a layer list, resized with a slider, dragged directly on the canvas, deleted, and then applied to Studio.
+- Studio export: overlay rendering now iterates all overlay layers with percent-based positioning so saved renders match the on-canvas stacking.
+- UX cleanup: fixed duplicate React keys in the studio brand color swatches; overlay pointers/hooks respect the Studio tool selection.
 - Brand Profile: simplified the page header (title is now “Brand Profile” and removed the subtitle line).
 - Docs: added `docs/font_system.md`, updated `docs/README.md`, and updated `docs/brand_profile_plan.md` / `docs/slide_flow_studio_sop.md` to reflect the centralized font registry and role-based selection.
 

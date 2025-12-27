@@ -2,6 +2,8 @@
 
 Purpose: running, date-stamped notes for changes made locally after cloning the partner’s GitHub repo. Audience is internal engineering (you and partner + AI assistants). Keep it concise but specific enough to reconstruct what changed and why.
 
+Location note: this file is part of the canonical docs set (it was previously parked in a review folder).
+
 ## Collaboration & Git hygiene
 - Default workflow: create a feature branch (`git checkout -b kirk/<short-topic>`), commit locally, then open a PR into your partner’s main branch. Avoid force-push to main.
 - If your partner prefers, you can fork the repo and PR back to their origin; same branching rules apply.

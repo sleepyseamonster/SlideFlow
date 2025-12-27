@@ -7,6 +7,8 @@
 
 > Replace italicized placeholders with final business details before publishing.
 
+This file is also used as a source for `scripts/build-policy-docs.mjs` (which generates hosted HTML into `policy-docs/`).
+
 ---
 
 ## 1. Acceptance of Terms

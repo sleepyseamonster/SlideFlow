@@ -5,7 +5,7 @@ Ensure the “Delete (X)” bulk action removes selected library images from bot
 
 ## Current Behavior
 - Per-card trash deletes work.
-- Bulk “Delete (X)” often does nothing (no confirm dialog, no deletion). See `docs/known_issues.md`.
+- Bulk “Delete (X)” often does nothing (no confirm dialog, no deletion). See `docs/todo.md` (Known Issues + Stabilization work items).
 
 ## Quick Workaround
 - Use the per-card trash icon to delete items one by one until bulk is fixed.

@@ -13,6 +13,7 @@
 - If a branch drifts, create a new snapshot and branch again rather than force-pushing.
 - When a design feels “approved,” PR from the experiment branch to your fork’s main, merge, then PR from your fork’s main to upstream.
 - Keep `docs/progress_log.md` updated at the end of each work session (date-stamped bullets of what changed and why).
+- Keep `docs/todo.md` updated when priorities/issues change.
 
 ## Progress Log Discipline
 - After every session, append a dated entry to `docs/progress_log.md` noting what changed, current status shifts, and next suggested steps.
