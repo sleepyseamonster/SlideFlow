@@ -10,15 +10,15 @@ Priority legend: P0 = urgent/blocker, P1 = high, P2 = medium, P3 = nice-to-have.
 Milestones: M1 Landing polish, M2 Dashboard/cards, M3 SlideBoard UX, M4 Media/Brand, M5 Profile/Billing, M6 Publish page, M7 AI/Integrations.
 
 ## At-a-glance priorities (P1 focus)
-- Stabilize critical bugs: Media Library bulk delete; Media Library → SlideBoard multi-import; Publish draft-save failures; caption persistence gap.
+- Stabilize critical bugs: Media Library → SlideBoard multi-import; Publish draft-save failures; caption persistence gap.
 - Landing polish: hero/scroll offset, subtitle + “How SlideFlow Works” copy, sample carousel assets, pricing clarity, drag-scroll for carousel wheel.
-- Dashboard usability: centered action row, inline title rename, slide-count dots, publish wiring, cleanup of card metadata.
-- SlideBoard stability: rebuild drag/drop, per-slide upload feedback, lighter slots, double-click to upload, hide helper text while uploading.
-- Profile/Billing + brand presets: editable profile, payment/cancel flows, preset save + AI integration.
+- Dashboard usability: publish wiring, cleanup of card metadata, and time-saved ticker accuracy.
+- SlideBoard stability: rebuild drag/drop, per-slide upload feedback, lighter slots, hide helper text while uploading.
+- Profile/Billing + brand presets: payment/cancel flows and wiring brand presets into AI generation.
 
 ## Known Issues (triage log)
 
-Last reviewed: 2025-12-26
+Last reviewed: 2025-12-27
 
 Legend: P1 = high, P2 = medium, P3 = low. Workarounds and next steps noted where known.
 
@@ -30,9 +30,9 @@ Legend: P1 = high, P2 = medium, P3 = low. Workarounds and next steps noted where
   - Impact: users cannot rearrange after returning; navigation forward breaks.  
   - Urgency: **major/urgent**, blocks core workflow.
 
-- **Media Library bulk delete does nothing (UI no-op)**  
-  - The top “Delete (X)” bulk action shows no confirm dialog and removes nothing, even with selections; per-card trash still works. Attempted fixes: refreshed Supabase session before deletion, awaited `removeImage`, added deleting-state + confirm dialog, refreshed library after deletes (`MediaLibrary.tsx`, `MediaLibraryContext.tsx`). Cleared bucket/data and retested—still broken.  
-  - Next steps: instrument `handleBulkDelete` click, verify the button renders when `selectedImages.size > 0`, ensure `selectedImages` survives filters/search. Consider extracting logic into a dedicated hook/test to confirm invocation.
+- **Media Library bulk delete fixed (custom confirmation)**  
+  - Implemented a custom confirmation modal for bulk delete; deletes now remove selected items and purge the user’s Supabase storage + `media` rows. State refreshes for Media Library + Studio tabs.  
+  - Status: resolved; keep an eye on multi-import separately.
 
 - **Media Library → SlideBoard multi-import clears slots**  
   - Importing multiple images briefly shows them, then they disappear; single import is reliable. No instrumentation yet.  
@@ -102,34 +102,34 @@ Legend: P1 = high, P2 = medium, P3 = low. Workarounds and next steps noted where
 - [ ] [P2][M1] Update landing page copy for the free trial offer and premium offer to ensure messaging is accurate.
 
 ### Dashboard & Carousel Cards
-- [ ] [P1][M2] Align the dashboard button row (Calendar, Studio, Media Library, Brand Profile, Create New Carousel) in one centered row and add SlideFlow Studio and Content Calendar buttons with proper navigation.
+- [x] [P1][M2] Align the dashboard button row (Calendar, Studio, Media Library, Brand Profile, Create New Carousel) in one centered row and add SlideFlow Studio and Content Calendar buttons with proper navigation.
 - [ ] [P2][M2] Redesign the weekly view styling (calendar posting not yet implemented).
-- [ ] [P2][M2] Replace the slide number label with Instagram-style dots to indicate slide count/current slide.
-- [ ] [P1][M2] Fix inline renaming of carousel titles (double-click to edit and save reliably).
-- [ ] [P2][M2] Remove the description field from carousel cards and stop using it in the UI/database.
+- [x] [P2][M2] Replace the slide number label with Instagram-style dots to indicate slide count/current slide.
+- [x] [P1][M2] Fix inline renaming of carousel titles (double-click to edit and save reliably).
+- [x] [P2][M2] Remove the description field from carousel cards and stop using it in the UI/database.
 - [ ] [P2][M2] Wire the dashboard “Publish” button on carousel cards to the posting workflow (currently UI-only).
-- [ ] [P3][M2] When Instagram posting is wired up, flip the carousel card draft flag to a “Published” state to mark it as eligible for time-saved stats.
+- [x] [P3][M2] When Instagram posting is wired up, flip the carousel card draft flag to a “Published” state to mark it as eligible for time-saved stats.
 - [ ] [P2][M2] Update the time-saved dashboard ticker to display hours and minutes and add 15 minutes for every carousel created and published; the ticker never decrements.
 
 ### SlideBoard (Carousel Editing)
 - [ ] [P2][M3] Lighten drop zone and slide slot backgrounds.
 - [ ] [P1][M3] Rebuild drag-and-drop interaction: the picked slide visually detaches; other slides stay still until hover; dropping on an occupied slot shifts slides left/right to the nearest open slot with smooth transitions.
 - [ ] [P1][M3] Improve upload UX by reducing flicker during slide uploads and showing a per-slide progress bar.
-- [ ] [P2][M3] Double-clicking any empty slot or the main drop zone opens the file picker (same as Add Files).
+- [x] [P2][M3] Double-clicking any empty slot or the main drop zone opens the file picker (same as Add Files).
 - [ ] [P2][M3] Hide helper text (“Hint: Add an image to continue.”) while a slide is uploading.
 
 ### Media Library
-- [ ] [P2][M4] Double-clicking an image opens the same full-size modal used on SlideBoard.
+- [x] [P2][M4] Double-clicking an image opens the same full-size modal used on SlideBoard.
 - [ ] [P1][M4] Add tabs/filters for media types: images, videos, AI prompts/saved prompts, and saved captions.
-- [ ] [P1][M4] Add a small “Save” button next to the media library button on the Generate page’s caption card that saves the current caption into the media library’s caption tab.
+- [x] [P1][M4] Add a small “Save” button next to the media library button on the Generate page’s caption card that saves the current caption into the media library’s caption tab.
 
 ### Brand Profile
-- [ ] [P2][M4] Refresh styling and design of the Brand Profile page.
-- [ ] [P1][M4] Add a preset save feature for Brand Profile (style, color palettes, fonts).
+- [x] [P2][M4] Refresh styling and design of the Brand Profile page.
+- [x] [P1][M4] Add a preset save feature for Brand Profile (style, color palettes, fonts).
 - [ ] [P1][M4] Wire saved Brand Profile presets into the AI generation workflow.
 
 ### Profile & Billing
-- [ ] [P1][M5] Enable editing user profile details (name, email, settings) and persist updates to Supabase.
+- [x] [P1][M5] Enable editing user profile details (name, email, settings) and persist updates to Supabase.
 - [ ] [P2][M5] Add profile image upload on the profile page.
 - [ ] [P3][M5] Fix profile page left-side spacing so long names/emails fit cleanly.
 - [ ] [P1][M5] Enable payment method update (Stripe).
@@ -138,9 +138,9 @@ Legend: P1 = high, P2 = medium, P3 = low. Workarounds and next steps noted where
 ### Publish Page
 - [ ] [P2][M6] Add a retro-style top-right “Publish” button with bouncing arrow; keep it inactive until the primary publish action arms it.
 - [ ] [P3][M6] Review and adjust the readiness panel on the publish card (final design/need).
-- [ ] [P2][M6] Remove the “Step Four, Publish” label from the top-right of the page.
-- [ ] [P1][M6] Add destination selector on Publish (choose which connected Meta destination to post to; default preselected).
-- [ ] [P1][M6] Implement Meta publishing in code (Supabase Edge Function) using `connected_account` + secrets (no n8n).
+- [x] [P2][M6] Remove the “Step Four, Publish” label from the top-right of the page.
+- [x] [P1][M6] Add destination selector on Publish (choose which connected Meta destination to post to; default preselected).
+- [x] [P1][M6] Implement Meta publishing in code (Supabase Edge Function) using `connected_account` + secrets (no n8n).
 
 ### AI & Integrations
 - [ ] [P1][M7] Implement OpenAI API support for AI generations.
@@ -151,7 +151,7 @@ Legend: P1 = high, P2 = medium, P3 = low. Workarounds and next steps noted where
 ### Stabilization work items (derived from Known Issues)
 - [ ] [P2][M2] Results image hydration depends on `originalMedia.bucket/path`; reopening fails if those fields are missing. Signed URLs expire after 1 hour and are not refreshed. Add timed refresh and handle missing `originalMedia`.
 - [ ] [P3][M2] Dashboard prefetch is best-effort; navigation proceeds silently on prefetch failure. Add visible error handling or retry before routing.
-- [ ] [P1][M4] Media Library bulk delete button is a no-op (no confirm/removal) though single-item delete works. Instrument `handleBulkDelete`, verify button visibility when `selectedImages.size > 0`, and ensure selection state survives filters/search.
+- [x] [P1][M4] Media Library bulk delete: added custom confirmation modal; deletes remove user-owned storage objects and media rows, refreshes library/studio, and clears selection.
 - [ ] [P1][M3] Media Library → SlideBoard multi-import: multiple images briefly appear then clear; only single import works. Instrument `handleImportFromLibrary` in `SlideBoard.tsx`, watch `pendingSlots/uploadedInfos/previews`, and ensure placement loop isn’t overwritten by hydration effects.
 - [ ] [P2][M2] Lint debt: ~53 errors (`npm run lint -- --quiet`), including unused imports/vars, `any` usage, and minor regex escape issues. Needs cleanup pass to get lint green.
 - [ ] [P1][M6] Publish “Save draft” flow fails to persist: Supabase update returns null/`Update failed`, slide order upsert may not run with correct user id, and modal errors surface but no row is written. Ensure draft save writes title/caption/status and slide order for the active carousel id with authenticated user, then navigates to Dashboard without blank screens.
@@ -180,4 +180,3 @@ Legend: P1 = high, P2 = medium, P3 = low. Workarounds and next steps noted where
 
 ### Known Issues (resolved)
 - [x] [P1][M3] SlideBoard persistence & carousel creation: uploads previously wrote to Supabase from SlideBoard and navigated even on Edge Function errors. Resolved by making SlideBoard local-only, moving all persistence (`media` + `carousel_slide`) into Generate Caption via `slideDrafts`, and reusing the existing carousel id instead of creating a new one.
-

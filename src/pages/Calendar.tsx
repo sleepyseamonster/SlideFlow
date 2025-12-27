@@ -536,6 +536,16 @@ export default function CalendarPage() {
                 <span className="sf-pill">Past dates locked</span>
               </div>
             </div>
+            <div className="flex-1">
+              <div className="sf-card border border-amber-400/50 bg-amber-500/10 text-amber-50 p-4">
+                <p className="text-sm font-semibold">
+                  Calendar is not complete and scheduling posts does not function.
+                </p>
+                <p className="text-xs text-amber-100/80 mt-1">
+                  Developer note for beta testing: scheduling is currently disabled; use the Dashboard for now.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 xl:grid-cols-[2.2fr_0.8fr]">

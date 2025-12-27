@@ -909,13 +909,12 @@ export default function Dashboard() {
                     />
                   ) : (
                     <h3
-                      className="font-semibold text-vanilla mb-1.5 text-base cursor-pointer select-text"
+                      className="font-semibold text-vanilla mb-3 text-base cursor-pointer select-text"
                       onDoubleClick={(event) => startEditingTitle(carousel, event)}
                     >
                       {carousel.title}
                     </h3>
                   )}
-                  <p className="text-vanilla/80 text-xs mb-3 line-clamp-2">{carousel.caption || carousel.description}</p>
 
                   <div className="flex items-center justify-between text-xs text-vanilla/70 mb-3">
                     <span

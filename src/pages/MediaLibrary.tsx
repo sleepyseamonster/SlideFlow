@@ -58,6 +58,8 @@ export default function MediaLibrary() {
   const [selectedCaptionIds, setSelectedCaptionIds] = useState<Set<string>>(new Set());
   const [selectedPromptIds, setSelectedPromptIds] = useState<Set<string>>(new Set());
   const [deletingText, setDeletingText] = useState(false);
+  const [pendingTextDelete, setPendingTextDelete] = useState<{ type: 'caption' | 'prompt' } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameSavingId, setRenameSavingId] = useState<string | null>(null);
@@ -259,20 +261,25 @@ export default function MediaLibrary() {
     setSelectedImages(newSelected);
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedImages.size === 0 || deleting) return;
+    setShowDeleteConfirm(true);
+  };
 
-    const confirmMessage = `Delete ${selectedImages.size} selected image${selectedImages.size === 1 ? '' : 's'}?`;
-    const confirmed = typeof window !== 'undefined' ? window.confirm(confirmMessage) : true;
-    if (!confirmed) return;
-
+  const confirmBulkDelete = async () => {
+    if (selectedImages.size === 0) {
+      setShowDeleteConfirm(false);
+      return;
+    }
     setDeleting(true);
     try {
       const session = await supabase.auth.getSession();
       if (!session.data.session) {
         alert('Please log in again before deleting images.');
+        setShowDeleteConfirm(false);
         return;
       }
+      setShowDeleteConfirm(false);
       try {
         await supabase.auth.setSession({
           access_token: session.data.session.access_token,
@@ -433,10 +440,17 @@ export default function MediaLibrary() {
   const handleBulkDeleteText = async (type: 'caption' | 'prompt') => {
     const selectedIds = type === 'caption' ? selectedCaptionIds : selectedPromptIds;
     if (selectedIds.size === 0 || deletingText) return;
-    const confirmMessage = `Delete ${selectedIds.size} selected ${type === 'caption' ? 'caption' : 'prompt'}${selectedIds.size === 1 ? '' : 's'}?`;
-    const confirmed = typeof window !== 'undefined' ? window.confirm(confirmMessage) : true;
-    if (!confirmed) return;
+    setPendingTextDelete({ type });
+  };
 
+  const confirmBulkDeleteText = async () => {
+    if (!pendingTextDelete) return;
+    const type = pendingTextDelete.type;
+    const selectedIds = type === 'caption' ? selectedCaptionIds : selectedPromptIds;
+    if (selectedIds.size === 0) {
+      setPendingTextDelete(null);
+      return;
+    }
     setDeletingText(true);
     try {
       const ids = Array.from(selectedIds);
@@ -447,6 +461,7 @@ export default function MediaLibrary() {
         await Promise.all(ids.map((id) => removePrompt(id)));
         setSelectedPromptIds(new Set());
       }
+      setPendingTextDelete(null);
     } catch (err) {
       console.error('Bulk delete failed:', err);
       alert('Delete failed. Please try again.');
@@ -1217,6 +1232,108 @@ export default function MediaLibrary() {
                     }`}
                   >
                     {editingTextSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showDeleteConfirm && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm p-4"
+              onClick={() => {
+                if (!deleting) setShowDeleteConfirm(false);
+              }}
+            >
+              <div
+                className="bg-surface border border-charcoal/60 rounded-xl shadow-soft w-full max-w-md p-6"
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="bulk-delete-title"
+              >
+                <h3 id="bulk-delete-title" className="text-lg font-semibold text-vanilla mb-2">
+                  Delete {selectedImages.size} item{selectedImages.size === 1 ? '' : 's'}?
+                </h3>
+                <p className="text-sm text-vanilla/75 mb-4">
+                  This will permanently remove the selected media from your library. The files will be deleted and cannot be recovered.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-4 py-2 rounded-md border border-charcoal/60 text-vanilla/80 hover:bg-surface-alt transition-colors text-sm font-semibold disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmBulkDelete}
+                    disabled={deleting}
+                    className={`px-4 py-2 rounded-md border text-sm font-semibold transition-colors ${
+                      deleting
+                        ? 'bg-surface text-red-200 border-red-400/30 cursor-not-allowed'
+                        : 'bg-red-500/10 text-red-200 border-red-400/50 hover:bg-red-500/20'
+                    }`}
+                  >
+                    {deleting ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {pendingTextDelete && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm p-4"
+              onClick={() => {
+                if (!deletingText) setPendingTextDelete(null);
+              }}
+            >
+              <div
+                className="bg-surface border border-charcoal/60 rounded-xl shadow-soft w-full max-w-md p-6"
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="bulk-delete-text-title"
+              >
+                {(() => {
+                  const isCaption = pendingTextDelete.type === 'caption';
+                  const count = isCaption ? selectedCaptionIds.size : selectedPromptIds.size;
+                  return (
+                    <>
+                      <h3 id="bulk-delete-text-title" className="text-lg font-semibold text-vanilla mb-2">
+                        Delete {count} {isCaption ? 'caption' : 'prompt'}
+                        {count === 1 ? '' : 's'}?
+                      </h3>
+                      <p className="text-sm text-vanilla/75 mb-4">
+                        This will permanently remove the selected {isCaption ? 'captions' : 'prompts'} from your
+                        library. You cannot undo this action.
+                      </p>
+                    </>
+                  );
+                })()}
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={deletingText}
+                    onClick={() => setPendingTextDelete(null)}
+                    className="px-4 py-2 rounded-md border border-charcoal/60 text-vanilla/80 hover:bg-surface-alt transition-colors text-sm font-semibold disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmBulkDeleteText}
+                    disabled={deletingText}
+                    className={`px-4 py-2 rounded-md border text-sm font-semibold transition-colors ${
+                      deletingText
+                        ? 'bg-surface text-red-200 border-red-400/30 cursor-not-allowed'
+                        : 'bg-red-500/10 text-red-200 border-red-400/50 hover:bg-red-500/20'
+                    }`}
+                  >
+                    {deletingText ? 'Deleting…' : 'Delete'}
                   </button>
                 </div>
               </div>

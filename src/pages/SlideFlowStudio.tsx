@@ -77,10 +77,12 @@ type ImageOverlayPlacement =
   | 'bottom-center'
   | 'bottom-right';
 
-type ImageOverlayConfig = {
+type ImageOverlayLayer = {
+  id: string;
   src: string;
   sizePercent: number; // % of canvas width
-  placement: ImageOverlayPlacement;
+  x: number; // percent of canvas width (anchor center)
+  y: number; // percent of canvas height (anchor center)
 };
 
 type StudioEditState = {
@@ -90,7 +92,7 @@ type StudioEditState = {
   cropZoomLevels: Record<string, number>;
   textLayersBySlide: Record<string, TextLayer[]>;
   selectedTextLayerBySlide: Record<string, string>;
-  imageOverlaysBySlide: Record<string, ImageOverlayConfig>;
+  imageOverlaysBySlide: Record<string, ImageOverlayLayer[]>;
 };
 
 type StudioHistory = {
@@ -386,7 +388,9 @@ export default function SlideFlowStudio() {
   const [editedSlideImages, setEditedSlideImages] = useState<Record<string, string>>({});
   const [textLayersBySlide, setTextLayersBySlide] = useState<Record<string, TextLayer[]>>({});
   const [selectedTextLayerBySlide, setSelectedTextLayerBySlide] = useState<Record<string, string>>({});
-  const [imageOverlaysBySlide, setImageOverlaysBySlide] = useState<Record<string, ImageOverlayConfig>>({});
+  const [imageOverlaysBySlide, setImageOverlaysBySlide] = useState<Record<string, ImageOverlayLayer[]>>({});
+  const [selectedImageOverlayBySlide, setSelectedImageOverlayBySlide] = useState<Record<string, string>>({});
+  const [overlayListDragId, setOverlayListDragId] = useState<string | null>(null);
   const [bgRemoveWorking, setBgRemoveWorking] = useState(false);
   const [bgReplaceWorking, setBgReplaceWorking] = useState(false);
   const [bgReplaceMode, setBgReplaceMode] = useState<'image' | 'prompt'>('image');
@@ -443,6 +447,17 @@ export default function SlideFlowStudio() {
     frameWidth: number;
     frameHeight: number;
   } | null>(null);
+  const overlayDragRef = useRef<{
+    slideId: string;
+    layerId: string;
+    pointerId: number;
+    startClientX: number;
+    startClientY: number;
+    startX: number;
+    startY: number;
+    frameWidth: number;
+    frameHeight: number;
+  } | null>(null);
   const textDragRef = useRef<{
     slideId: string;
     layerId: string;
@@ -462,6 +477,7 @@ export default function SlideFlowStudio() {
   const [history, setHistory] = useState<StudioHistory>({ stack: [], index: 0 });
   const [historyCommitTick, setHistoryCommitTick] = useState(0);
   const historyCommitTimeoutRef = useRef<number | null>(null);
+  const [applyWorking, setApplyWorking] = useState(false);
 
   const cloneEditState = (state: StudioEditState): StudioEditState => {
     if (typeof structuredClone === 'function') return structuredClone(state);
@@ -944,19 +960,7 @@ export default function SlideFlowStudio() {
 
     const objectUrl = URL.createObjectURL(file);
     createdOverlayUrls.current.push(objectUrl);
-    setImageOverlaysBySlide((prev) => {
-      const existing = prev[activeSlide.id];
-      if (existing?.src) revokeIfObjectUrl(existing.src);
-      return {
-        ...prev,
-        [activeSlide.id]: {
-          src: objectUrl,
-          sizePercent: existing?.sizePercent ?? 22,
-          placement: existing?.placement ?? 'bottom-right',
-        },
-      };
-    });
-    requestHistoryCommit();
+    addImageOverlayLayer(activeSlide.id, objectUrl);
     event.target.value = '';
   };
 
@@ -976,53 +980,70 @@ export default function SlideFlowStudio() {
     try {
       const parsed = JSON.parse(payload) as { src?: string; label?: string };
       if (!parsed.src) return;
-      setImageOverlaysBySlide((prev) => {
-        const existing = prev[activeSlide.id];
-        if (existing?.src) revokeIfObjectUrl(existing.src);
-        return {
-          ...prev,
-          [activeSlide.id]: {
-            src: parsed.src,
-            sizePercent: existing?.sizePercent ?? 22,
-            placement: existing?.placement ?? 'bottom-right',
-          },
-        };
-      });
-      requestHistoryCommit();
+      addImageOverlayLayer(activeSlide.id, parsed.src);
     } catch {
       // ignore invalid payloads
     }
   };
 
-  const getOverlayCssPlacement = (placement: ImageOverlayPlacement): React.CSSProperties => {
-    if (placement === 'top-left') return { left: 14, top: 14 };
-    if (placement === 'top-center') return { left: '50%', top: 14, transform: 'translateX(-50%)' };
-    if (placement === 'top-right') return { right: 14, top: 14 };
-    if (placement === 'middle-left') return { left: 14, top: '50%', transform: 'translateY(-50%)' };
-    if (placement === 'center') return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
-    if (placement === 'middle-right') return { right: 14, top: '50%', transform: 'translateY(-50%)' };
-    if (placement === 'bottom-left') return { left: 14, bottom: 14 };
-    if (placement === 'bottom-center') return { left: '50%', bottom: 14, transform: 'translateX(-50%)' };
-    return { right: 14, bottom: 14 };
+  const selectImageOverlay = (slideId: string, layerId: string) => {
+    setSelectedImageOverlayBySlide((prev) => ({ ...prev, [slideId]: layerId }));
   };
 
-  const updateImageOverlay = (slideId: string, patch: Partial<ImageOverlayConfig>, commit: 'none' | 'debounced' | 'immediate' = 'debounced') => {
+  const addImageOverlayLayer = (slideId: string, src: string, patch?: Partial<ImageOverlayLayer>) => {
+    const layer = createImageOverlayLayer(src, patch);
     setImageOverlaysBySlide((prev) => {
-      const existing = prev[slideId];
-      if (!existing) return prev;
-      return { ...prev, [slideId]: { ...existing, ...patch } };
+      const existing = prev[slideId] ?? [];
+      return { ...prev, [slideId]: [...existing, layer] };
+    });
+    setSelectedImageOverlayBySlide((prev) => ({ ...prev, [slideId]: layer.id }));
+    requestHistoryCommit();
+  };
+
+  const updateImageOverlay = (
+    slideId: string,
+    layerId: string,
+    patch: Partial<ImageOverlayLayer>,
+    commit: 'none' | 'debounced' | 'immediate' = 'debounced'
+  ) => {
+    setImageOverlaysBySlide((prev) => {
+      const layers = prev[slideId] ?? [];
+      const nextLayers = layers.map((layer) => (layer.id === layerId ? { ...layer, ...patch } : layer));
+      return { ...prev, [slideId]: nextLayers };
     });
     if (commit === 'immediate') requestHistoryCommit();
     if (commit === 'debounced') requestHistoryCommitDebounced(300);
   };
 
-  const removeImageOverlay = (slideId: string) => {
+  const removeImageOverlay = (slideId: string, layerId: string) => {
+    let nextSelected = '';
     setImageOverlaysBySlide((prev) => {
-      const existing = prev[slideId];
-      if (existing?.src) revokeIfObjectUrl(existing.src);
-      const next = { ...prev };
-      delete next[slideId];
+      const layers = prev[slideId] ?? [];
+      const target = layers.find((layer) => layer.id === layerId);
+      if (target?.src) revokeIfObjectUrl(target.src);
+      const nextLayers = layers.filter((layer) => layer.id !== layerId);
+      nextSelected = nextLayers[0]?.id ?? '';
+      const next = { ...prev, [slideId]: nextLayers };
+      if (!nextLayers.length) {
+        delete next[slideId];
+      }
       return next;
+    });
+    setSelectedImageOverlayBySlide((prev) => ({ ...prev, [slideId]: nextSelected }));
+    requestHistoryCommit();
+  };
+
+  const reorderImageOverlay = (slideId: string, fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    setImageOverlaysBySlide((prev) => {
+      const layers = prev[slideId] ?? [];
+      const fromIndex = layers.findIndex((layer) => layer.id === fromId);
+      const toIndex = layers.findIndex((layer) => layer.id === toId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+      const next = [...layers];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return { ...prev, [slideId]: next };
     });
     requestHistoryCommit();
   };
@@ -1699,7 +1720,12 @@ export default function SlideFlowStudio() {
   const activeSlideImageSrc = activeSlide?.image ? getDisplayedSlideImage(activeSlide) : '';
   const activeTextLayers = activeSlide?.id ? textLayersBySlide[activeSlide.id] ?? [] : [];
   const activeSelectedTextLayerId = activeSlide?.id ? selectedTextLayerBySlide[activeSlide.id] ?? '' : '';
-  const activeImageOverlay = activeSlide?.id ? imageOverlaysBySlide[activeSlide.id] ?? null : null;
+  const activeImageOverlays = activeSlide?.id ? imageOverlaysBySlide[activeSlide.id] ?? [] : [];
+  const activeSelectedImageOverlayId = activeSlide?.id ? selectedImageOverlayBySlide[activeSlide.id] ?? '' : '';
+  const activeImageOverlay =
+    activeSlide?.id && activeImageOverlays.length
+      ? activeImageOverlays.find((layer) => layer.id === activeSelectedImageOverlayId) ?? activeImageOverlays[0] ?? null
+      : null;
   const activeSelectedTextLayer =
     activeSlide?.id && activeTextLayers.length
       ? activeTextLayers.find((layer) => layer.id === activeSelectedTextLayerId) ?? activeTextLayers[0] ?? null
@@ -1743,6 +1769,16 @@ export default function SlideFlowStudio() {
     if (selected) return;
     setSelectedTextLayerBySlide((prev) => ({ ...prev, [activeSlide.id]: layers[0]!.id }));
   }, [activeTool, activeSlide?.id, activeTextLayers.length, activeSelectedTextLayerId]);
+
+  useEffect(() => {
+    if (activeTool !== 'image-overlay') return;
+    if (!activeSlide) return;
+    const layers = imageOverlaysBySlide[activeSlide.id] ?? [];
+    if (!layers.length) return;
+    const selected = selectedImageOverlayBySlide[activeSlide.id] ?? '';
+    if (selected) return;
+    setSelectedImageOverlayBySlide((prev) => ({ ...prev, [activeSlide.id]: layers[0]!.id }));
+  }, [activeTool, activeSlide?.id, activeImageOverlays.length, activeSelectedImageOverlayId]);
 
   useEffect(() => {
     const rgb = hexToRgb(activeTextColor);
@@ -1811,6 +1847,15 @@ export default function SlideFlowStudio() {
     fontId: defaultTextFontId,
     color: defaultTextColor,
     align: 'center',
+    ...(patch ?? {}),
+  });
+
+  const createImageOverlayLayer = (src: string, patch?: Partial<ImageOverlayLayer>): ImageOverlayLayer => ({
+    id: `img-ov-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    src,
+    sizePercent: 22,
+    x: 82,
+    y: 82,
     ...(patch ?? {}),
   });
 
@@ -1911,6 +1956,54 @@ export default function SlideFlowStudio() {
     requestHistoryCommit();
   };
 
+  const handleOverlayPointerDown = (event: React.PointerEvent<HTMLDivElement>, layerId: string) => {
+    if (activeTool !== 'image-overlay') return;
+    if (!activeSlide) return;
+    if (!cropFrameRef.current) return;
+
+    const frameRect = cropFrameRef.current.getBoundingClientRect();
+    if (!frameRect.width || !frameRect.height) return;
+
+    const layers = imageOverlaysBySlide[activeSlide.id] ?? [];
+    const layer = layers.find((candidate) => candidate.id === layerId);
+    if (!layer) return;
+
+    selectImageOverlay(activeSlide.id, layerId);
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    overlayDragRef.current = {
+      slideId: activeSlide.id,
+      layerId,
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startX: layer.x,
+      startY: layer.y,
+      frameWidth: frameRect.width,
+      frameHeight: frameRect.height,
+    };
+  };
+
+  const handleOverlayPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const dragState = overlayDragRef.current;
+    if (!dragState) return;
+    if (dragState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - dragState.startClientX;
+    const deltaY = event.clientY - dragState.startClientY;
+    const nextX = Math.min(98, Math.max(2, dragState.startX + (deltaX / dragState.frameWidth) * 100));
+    const nextY = Math.min(98, Math.max(2, dragState.startY + (deltaY / dragState.frameHeight) * 100));
+    updateImageOverlay(dragState.slideId, dragState.layerId, { x: nextX, y: nextY }, 'none');
+  };
+
+  const handleOverlayPointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    const dragState = overlayDragRef.current;
+    if (!dragState) return;
+    if (dragState.pointerId !== event.pointerId) return;
+    overlayDragRef.current = null;
+    requestHistoryCommit();
+  };
+
   const handleCropZoomChange = (nextValue: number) => {
     if (!activeCropKey) return;
     setCropZoomLevels((prev) => ({ ...prev, [activeCropKey]: nextValue }));
@@ -1987,7 +2080,7 @@ export default function SlideFlowStudio() {
   const getSlideHasEdits = (slideId: string) => {
     if (editedSlideImages[slideId]) return true;
     if (textLayersBySlide[slideId]?.length) return true;
-    if (imageOverlaysBySlide[slideId]) return true;
+    if ((imageOverlaysBySlide[slideId]?.length ?? 0) > 0) return true;
     if (Object.keys(cropPositions).some((key) => key.startsWith(`${slideId}:`))) return true;
     if (Object.keys(cropZoomLevels).some((key) => key.startsWith(`${slideId}:`))) return true;
     return false;
@@ -2015,7 +2108,14 @@ export default function SlideFlowStudio() {
     });
     setImageOverlaysBySlide((prev) => {
       const existing = prev[slideId];
-      if (existing?.src) revokeIfObjectUrl(existing.src);
+      existing?.forEach((layer) => {
+        if (layer?.src) revokeIfObjectUrl(layer.src);
+      });
+      const next = { ...prev };
+      delete next[slideId];
+      return next;
+    });
+    setSelectedImageOverlayBySlide((prev) => {
       const next = { ...prev };
       delete next[slideId];
       return next;
@@ -2134,57 +2234,29 @@ export default function SlideFlowStudio() {
     ctx.clearRect(0, 0, width, height);
     ctx.drawImage(bitmap as CanvasImageSource, drawX, drawY, drawW, drawH);
 
-    if (activeImageOverlay?.src) {
-      try {
-        const overlayBitmap = await loadBitmap(activeImageOverlay.src);
-        const overlayW0 = overlayBitmap instanceof HTMLImageElement ? overlayBitmap.naturalWidth : overlayBitmap.width;
-        const overlayH0 = overlayBitmap instanceof HTMLImageElement ? overlayBitmap.naturalHeight : overlayBitmap.height;
-        if (overlayW0 > 0 && overlayH0 > 0) {
-          const desiredW = (width * activeImageOverlay.sizePercent) / 100;
-          const desiredH = (desiredW * overlayH0) / overlayW0;
-          const maxH = height * 0.55;
-          const drawOverlayH = Math.min(desiredH, maxH);
-          const drawOverlayW = (drawOverlayH * overlayW0) / overlayH0;
-          const padding = Math.round(width * 0.045);
-
-          let overlayX = padding;
-          let overlayY = padding;
-          const placement = activeImageOverlay.placement;
-          const centeredX = (width - drawOverlayW) / 2;
-          const centeredY = (height - drawOverlayH) / 2;
-
-          if (placement === 'top-center') {
-            overlayX = centeredX;
-            overlayY = padding;
-          } else if (placement === 'top-right') {
-            overlayX = width - drawOverlayW - padding;
-            overlayY = padding;
-          } else if (placement === 'middle-left') {
-            overlayX = padding;
-            overlayY = centeredY;
-          } else if (placement === 'center') {
-            overlayX = centeredX;
-            overlayY = centeredY;
-          } else if (placement === 'middle-right') {
-            overlayX = width - drawOverlayW - padding;
-            overlayY = centeredY;
-          } else if (placement === 'bottom-left') {
-            overlayX = padding;
-            overlayY = height - drawOverlayH - padding;
-          } else if (placement === 'bottom-center') {
-            overlayX = centeredX;
-            overlayY = height - drawOverlayH - padding;
-          } else if (placement === 'bottom-right') {
-            overlayX = width - drawOverlayW - padding;
-            overlayY = height - drawOverlayH - padding;
+    const overlays = [...activeImageOverlays].reverse(); // draw back to front based on list order (topmost drawn last)
+    if (overlays.length) {
+      for (const layer of overlays) {
+        if (!layer.src) continue;
+        try {
+          const overlayBitmap = await loadBitmap(layer.src);
+          const overlayW0 = overlayBitmap instanceof HTMLImageElement ? overlayBitmap.naturalWidth : overlayBitmap.width;
+          const overlayH0 = overlayBitmap instanceof HTMLImageElement ? overlayBitmap.naturalHeight : overlayBitmap.height;
+          if (overlayW0 > 0 && overlayH0 > 0) {
+            const desiredW = (width * layer.sizePercent) / 100;
+            const desiredH = (desiredW * overlayH0) / overlayW0;
+            const maxH = height * 0.65;
+            const drawOverlayH = Math.min(desiredH, maxH);
+            const drawOverlayW = (drawOverlayH * overlayW0) / overlayH0;
+            const anchorX = (layer.x / 100) * width;
+            const anchorY = (layer.y / 100) * height;
+            const overlayX = Math.max(0, Math.min(width - drawOverlayW, anchorX - drawOverlayW / 2));
+            const overlayY = Math.max(0, Math.min(height - drawOverlayH, anchorY - drawOverlayH / 2));
+            ctx.drawImage(overlayBitmap as CanvasImageSource, overlayX, overlayY, drawOverlayW, drawOverlayH);
           }
-
-          overlayX = Math.max(0, Math.min(width - drawOverlayW, overlayX));
-          overlayY = Math.max(0, Math.min(height - drawOverlayH, overlayY));
-          ctx.drawImage(overlayBitmap as CanvasImageSource, overlayX, overlayY, drawOverlayW, drawOverlayH);
+        } catch {
+          // ignore overlay render errors
         }
-      } catch {
-        // ignore overlay render errors
       }
     }
 
@@ -2243,6 +2315,31 @@ export default function SlideFlowStudio() {
     }
 
     return canvasToBlob(canvas, 'image/png');
+  };
+
+  const handleApplyCurrentEdits = async (toolId: string) => {
+    if (!activeSlide || !activeSlideImageSrc) {
+      setToast('Add or select an image first.');
+      return;
+    }
+    if (applyWorking) return;
+
+    setApplyWorking(true);
+    try {
+      const blob = await renderActiveSlideToPngBlob();
+      const objectUrl = URL.createObjectURL(blob);
+      createdObjectUrls.current.push(objectUrl);
+      const label = getNextStudioLabel();
+      appendGeneratedSlide({ image: objectUrl, status: 'Edited', label });
+      const dataUrl = await blobToDataUrl(blob);
+      void persistStudioAsset(dataUrl, `apply-${toolId}`, label);
+      setToast('Applied and saved to Studio.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Apply failed.';
+      setToast(message);
+    } finally {
+      setApplyWorking(false);
+    }
   };
 
   const handleExportActiveSlide = async () => {
@@ -2602,9 +2699,9 @@ export default function SlideFlowStudio() {
                   </div>
                   {brandColors.length ? (
                     <div className="flex items-center gap-1.5 flex-shrink-0" aria-hidden="true">
-                      {brandColors.slice(0, 4).map((color) => (
+                      {brandColors.slice(0, 4).map((color, idx) => (
                         <span
-                          key={color}
+                          key={`${color}-${idx}`}
                           className="h-3 w-3 rounded-full border border-charcoal/50"
                           style={{ backgroundColor: color }}
                         />
@@ -2758,20 +2855,43 @@ export default function SlideFlowStudio() {
                             transformOrigin: `${activeCropPosition.x}% ${activeCropPosition.y}%`,
                           }}
                         />
-                        {activeImageOverlay?.src && (
-                          <div className="pointer-events-none absolute inset-0" style={{ zIndex: 5 }}>
-                            <img
-                              key={activeImageOverlay.src}
-                              src={activeImageOverlay.src}
-                              alt="Image overlay"
-                              className="absolute select-none"
-                              style={{
-                                width: `${activeImageOverlay.sizePercent}%`,
-                                height: 'auto',
-                                ...getOverlayCssPlacement(activeImageOverlay.placement),
-                              }}
-                              draggable={false}
-                            />
+                        {activeImageOverlays.length > 0 && (
+                          <div
+                            className={`absolute inset-0 ${activeTool === 'image-overlay' ? '' : 'pointer-events-none'}`}
+                            style={{ zIndex: 5 }}
+                          >
+                            {activeImageOverlays.map((layer, index) => {
+                              const isSelected = layer.id === activeImageOverlay?.id;
+                              const zIndex = activeImageOverlays.length - index + 3;
+                              return (
+                                <div
+                                  key={layer.id}
+                                  onPointerDown={(event) => handleOverlayPointerDown(event, layer.id)}
+                                  onPointerMove={handleOverlayPointerMove}
+                                  onPointerUp={handleOverlayPointerEnd}
+                                  onPointerCancel={handleOverlayPointerEnd}
+                                  className={`${activeTool === 'image-overlay' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'} absolute select-none`}
+                                  style={{
+                                    left: `${layer.x}%`,
+                                    top: `${layer.y}%`,
+                                    transform: 'translate(-50%, -50%)',
+                                    width: `${layer.sizePercent}%`,
+                                    height: 'auto',
+                                    zIndex,
+                                  }}
+                                  draggable={false}
+                                >
+                                  <img
+                                    src={layer.src}
+                                    alt="Image overlay"
+                                    className="block h-auto w-full select-none pointer-events-none"
+                                  />
+                                  {activeTool === 'image-overlay' && isSelected && (
+                                    <span className="pointer-events-none absolute -inset-1 rounded-md border border-pacific/60" aria-hidden="true" />
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                         {activeTextLayers.length > 0 && (
@@ -2979,6 +3099,18 @@ export default function SlideFlowStudio() {
                         ))}
                       </div>
                     </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleApplyCurrentEdits('crop');
+                        }}
+                        disabled={!activeSlideImageSrc || applyWorking}
+                        className="sf-btn-primary"
+                      >
+                        {applyWorking ? 'Applying…' : 'Apply'}
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -3056,9 +3188,9 @@ export default function SlideFlowStudio() {
                           <span className="text-xs font-semibold text-vanilla/80">{activeBrandProfile.label}</span>
                         </div>
                         <div className="mt-2 flex items-center gap-1.5">
-                          {(activeBrandProfile.colors ?? []).slice(0, 4).map((color) => (
+                          {(activeBrandProfile.colors ?? []).slice(0, 4).map((color, idx) => (
                             <span
-                              key={color}
+                              key={`${color}-${idx}`}
                               className="h-4 w-4 rounded-md border border-charcoal/50"
                               style={{ backgroundColor: color }}
                             />
@@ -3282,9 +3414,9 @@ export default function SlideFlowStudio() {
                           <span className="text-xs font-semibold text-vanilla/80">{activeBrandProfile.label}</span>
                         </div>
                         <div className="mt-2 flex items-center gap-1.5">
-                          {(activeBrandProfile.colors ?? []).slice(0, 4).map((color) => (
+                          {(activeBrandProfile.colors ?? []).slice(0, 4).map((color, idx) => (
                             <span
-                              key={color}
+                              key={`${color}-${idx}`}
                               className="h-4 w-4 rounded-md border border-charcoal/50"
                               style={{ backgroundColor: color }}
                             />
@@ -3687,9 +3819,9 @@ export default function SlideFlowStudio() {
                         </div>
                       )}
                       <div className="mt-2 grid grid-cols-4 gap-2">
-                        {(brandColors.length ? brandColors : defaultTextPalette).slice(0, 8).map((color) => (
+                        {(brandColors.length ? brandColors : defaultTextPalette).slice(0, 8).map((color, idx) => (
                           <button
-                            key={color}
+                            key={`${color}-${idx}`}
                             type="button"
                             onClick={() => {
                               if (!activeSlide || !activeSelectedTextLayer) return;
@@ -3724,6 +3856,18 @@ export default function SlideFlowStudio() {
                     >
                       Delete
                     </button>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleApplyCurrentEdits('text');
+                        }}
+                        disabled={!activeSlideImageSrc || applyWorking}
+                        className="sf-btn-primary"
+                      >
+                        {applyWorking ? 'Applying…' : 'Apply'}
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -3815,9 +3959,9 @@ export default function SlideFlowStudio() {
                     </div>
                     {brandColors.length ? (
                       <div className="grid grid-cols-4 gap-2">
-                        {brandColors.map((color) => (
+                        {brandColors.map((color, idx) => (
                           <button
-                            key={color}
+                            key={`${color}-${idx}`}
                             type="button"
                             className="h-8 rounded-md border border-charcoal/50"
                             style={{ backgroundColor: color }}
@@ -3852,135 +3996,126 @@ export default function SlideFlowStudio() {
                         disabled={!activeSlide}
                         className="sf-btn-primary w-full disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        {activeImageOverlay ? 'Replace overlay image' : 'Upload overlay image'}
+                        Add overlay image
                       </button>
-                      {activeImageOverlay ? (
-                        <div
-                          className={`rounded-md border p-2 transition-colors ${
-                            imageOverlayDragActive
-                              ? 'border-pacific/70 bg-pacific/15'
-                              : 'border-charcoal/50 bg-surface-alt/60'
-                          }`}
-                          onDragOver={(event) => {
-                            event.preventDefault();
-                            event.dataTransfer.dropEffect = 'copy';
-                            setImageOverlayDragActive(true);
-                          }}
-                          onDragLeave={() => setImageOverlayDragActive(false)}
-                          onDrop={handleImageOverlayDrop}
-                        >
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={activeImageOverlay.src}
-                              alt="Overlay preview"
-                              className="h-10 w-10 rounded-md object-contain bg-ink/30 border border-charcoal/50"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-vanilla/70">Overlay active</p>
+                      <div
+                        className={`rounded-md border px-3 py-3 text-xs transition-colors ${
+                          imageOverlayDragActive
+                            ? 'border-pacific/70 bg-pacific/15 text-vanilla'
+                            : 'border-dashed border-charcoal/50 bg-ink/40 text-vanilla/50'
+                        }`}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = 'copy';
+                          setImageOverlayDragActive(true);
+                        }}
+                        onDragLeave={() => setImageOverlayDragActive(false)}
+                        onDrop={handleImageOverlayDrop}
+                      >
+                        Drag a slide thumbnail or upload a transparent PNG/logo to create a new overlay layer.
+                      </div>
+                    </div>
+
+                    {activeImageOverlays.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="sf-label mb-0">Overlay layers</label>
+                          <span className="text-[11px] text-vanilla/50">{activeImageOverlays.length}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {activeImageOverlays.map((layer, index) => {
+                            const isSelected = layer.id === activeImageOverlay?.id;
+                            return (
                               <button
+                                key={layer.id}
+                                draggable
+                                onDragStart={() => {
+                                  setOverlayListDragId(layer.id);
+                                }}
+                                onDragOver={(event) => {
+                                  event.preventDefault();
+                                }}
+                                onDrop={() => {
+                                  if (!activeSlide || !overlayListDragId) return;
+                                  reorderImageOverlay(activeSlide.id, overlayListDragId, layer.id);
+                                  setOverlayListDragId(null);
+                                }}
+                                onDragEnd={() => setOverlayListDragId(null)}
                                 type="button"
                                 onClick={() => {
                                   if (!activeSlide) return;
-                                  removeImageOverlay(activeSlide.id);
+                                  selectImageOverlay(activeSlide.id, layer.id);
                                 }}
-                                className="text-[11px] text-pacific hover:text-vanilla"
+                                className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                                  isSelected
+                                    ? 'border-pacific/70 bg-pacific/15 text-vanilla'
+                                    : 'border-charcoal/50 bg-surface-alt text-vanilla/70 hover:bg-surface-muted hover:text-vanilla'
+                                }`}
                               >
-                                Remove overlay
+                                <div className="flex items-center gap-3">
+                                  <span className="h-8 w-8 rounded-md bg-ink/30 border border-charcoal/50 overflow-hidden flex-shrink-0">
+                                    <img src={layer.src} alt="" className="h-full w-full object-contain" />
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="truncate font-medium">Overlay #{index + 1}</span>
+                                      <span className="text-[11px] text-vanilla/50">{Math.round(layer.sizePercent)}%</span>
+                                    </div>
+                                  </div>
+                                </div>
                               </button>
-                            </div>
-                          </div>
+                            );
+                          })}
                         </div>
-                      ) : (
-                        <div
-                          className={`rounded-md border px-3 py-3 text-xs transition-colors ${
-                            imageOverlayDragActive
-                              ? 'border-pacific/70 bg-pacific/15 text-vanilla'
-                              : 'border-dashed border-charcoal/50 bg-ink/40 text-vanilla/50'
-                          }`}
-                          onDragOver={(event) => {
-                            event.preventDefault();
-                            event.dataTransfer.dropEffect = 'copy';
-                            setImageOverlayDragActive(true);
-                          }}
-                          onDragLeave={() => setImageOverlayDragActive(false)}
-                          onDrop={handleImageOverlayDrop}
-                        >
-                          Upload a transparent PNG or logo to place on the image.
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     <div>
                       <label className="sf-label">Size</label>
                       <input
                         type="range"
-                        min={0}
+                        min={10}
                         max={100}
-                        value={
-                          activeImageOverlay
-                            ? Math.max(
-                                0,
-                                Math.min(
-                                  100,
-                                  Math.round(((activeImageOverlay.sizePercent - 15) / 85) * 100)
-                                )
-                              )
-                            : 0
-                        }
+                        value={activeImageOverlay ? Math.round(activeImageOverlay.sizePercent) : 10}
                         onChange={(event) => {
                           if (!activeSlide || !activeImageOverlay) return;
-                          const sliderValue = Number(event.target.value);
-                          const nextSize = Math.round(15 + (sliderValue / 100) * 85);
-                          updateImageOverlay(activeSlide.id, { sizePercent: nextSize }, 'debounced');
+                          const nextSize = Number(event.target.value);
+                          updateImageOverlay(activeSlide.id, activeImageOverlay.id, { sizePercent: nextSize }, 'debounced');
                         }}
                         className="w-full accent-pacific"
                         disabled={!activeSlide || !activeImageOverlay}
                       />
                       <div className="mt-1 text-xs text-vanilla/50">
-                        {activeImageOverlay ? Math.max(15, Math.min(100, Math.round(activeImageOverlay.sizePercent))) : 15}%
+                        {activeImageOverlay ? Math.round(activeImageOverlay.sizePercent) : 10}%
                       </div>
                     </div>
 
-                    <div>
-                      <label className="sf-label">Placement</label>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
-                      {(
-                        [
-                          { id: 'top-left', label: 'Top left' },
-                          { id: 'top-center', label: 'Top center' },
-                          { id: 'top-right', label: 'Top right' },
-                          { id: 'middle-left', label: 'Middle left' },
-                          { id: 'center', label: 'Center' },
-                          { id: 'middle-right', label: 'Middle right' },
-                          { id: 'bottom-left', label: 'Bottom left' },
-                          { id: 'bottom-center', label: 'Bottom center' },
-                          { id: 'bottom-right', label: 'Bottom right' },
-                        ] as const
-                      ).map((option) => {
-                        const isActive = activeImageOverlay?.placement === option.id;
-                        return (
-                          <button
-                            key={option.id}
-                            type="button"
-                            onClick={() => {
-                              if (!activeSlide || !activeImageOverlay) return;
-                              updateImageOverlay(activeSlide.id, { placement: option.id }, 'immediate');
-                            }}
-                            className={`flex h-10 items-center justify-center rounded-md border px-2 text-center text-[10px] font-semibold uppercase tracking-[0.2em] transition-colors ${
-                              isActive
-                                ? 'border-pacific/80 bg-gradient-to-br from-pacific/30 via-surface-alt to-pacific/60 text-vanilla shadow-[0_0_0_2px_rgba(64,160,178,0.8)]'
-                                : 'border-charcoal/50 bg-surface-alt/70 text-vanilla/70 hover:border-pacific/70 hover:bg-pacific/25 hover:text-vanilla'
-                            }`}
-                            aria-label={option.label}
-                            title={option.label}
-                            aria-pressed={isActive}
-                            disabled={!activeSlide || !activeImageOverlay}
-                          >
-                            {option.label}
-                          </button>
-                        );
-                      })}
+                    <div className="rounded-md border border-charcoal/50 bg-surface-alt/60 px-3 py-2 text-[11px] text-vanilla/60">
+                      Drag overlays directly on the canvas to position them.
                     </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled={!activeSlide || !activeImageOverlay}
+                        onClick={() => {
+                          if (!activeSlide || !activeImageOverlay) return;
+                          removeImageOverlay(activeSlide.id, activeImageOverlay.id);
+                        }}
+                        className="sf-btn-secondary w-full disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleApplyCurrentEdits('image-overlay');
+                        }}
+                        disabled={!activeSlideImageSrc || applyWorking}
+                        className="sf-btn-primary w-full"
+                      >
+                        {applyWorking ? 'Applying…' : 'Apply'}
+                      </button>
                     </div>
                   </div>
                 )}

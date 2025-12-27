@@ -977,9 +977,9 @@ export default function BrandProfile() {
                         )}
                       </div>
                       <div className="mt-3 flex items-center gap-3">
-                        {paletteColors.slice(0, 4).map((color) => (
+                        {paletteColors.slice(0, 4).map((color, idx) => (
                           <span
-                            key={`${preset.id}-${color}`}
+                            key={`${preset.id}-${idx}-${color}`}
                             className="h-4 w-4 rounded-full border border-charcoal/50 shadow-inner"
                             style={{ backgroundColor: color }}
                           />
