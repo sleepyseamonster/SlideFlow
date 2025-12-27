@@ -8,6 +8,10 @@ export interface DatabaseCarousel {
   status: string;
   caption?: string | null;
   caption_id?: string;
+  posting_status?: 'draft' | 'scheduled' | 'posted' | 'failed' | null;
+  publish_started_at?: string | null;
+  publish_completed_at?: string | null;
+  publish_error?: string | null;
   created_at: string;
   updated_at: string;
 }

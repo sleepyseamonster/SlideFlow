@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
 import CircularGalleryDemo from '../components/CircularGalleryDemo';
 import { SparklesText } from '../components/ui/sparkles-text';
+import { PLAN_OPTIONS } from '../lib/plans';
 import {
   ImagePlus,
   Sparkles,
@@ -118,6 +119,23 @@ export default function LandingPage() {
       a: 'Yes. Approve your flow, then publish instantly or schedule it. You’ll need your connected Instagram account—don’t worry, we show you how.'
     },
   ];
+
+  const pricingPlans = PLAN_OPTIONS.map((plan) => ({
+    ...plan,
+    credits: plan.creditsLabel,
+    cta:
+      plan.key === 'free'
+        ? { label: 'Start free — build your first carousel', to: '/signup' }
+        : {
+            label:
+              plan.key === 'creator'
+                ? 'Upgrade to Creator'
+                : plan.key === 'starter'
+                ? 'Choose Starter'
+                : 'Upgrade to Studio',
+            action: 'checkout',
+          },
+  }));
 
   return (
     <div className="min-h-screen bg-ink text-vanilla">
@@ -304,90 +322,99 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <SparklesText 
-              text="Start free. Upgrade when carousels are routine." 
+              text="Pricing that scales with your AI needs." 
               className="text-4xl font-bold mb-3"
               colors={{ first: '#40A0B2', second: '#325E6A' }}
               sparklesCount={8}
             />
-            <p className="text-lg text-vanilla/70">Generate your first carousel for free, then unlock unlimited runs, brand presets, direct posting, and scheduling with Premium.</p>
+            <p className="text-lg text-vanilla/70">
+              Every plan includes the full SlideFlow workflow. Monthly credits reset, credit packs never expire.
+            </p>
           </div>
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {/* Free Plan */}
-            <div className="sf-card p-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">Free trial</h3>
-                <span className="sf-pill bg-surface text-vanilla/80">Starter</span>
-              </div>
-              <div className="mb-6">
-                <span className="text-4xl font-bold">$0</span>
-                <span className="text-vanilla/70 ml-2">/ first carousel</span>
-              </div>
-              <ul className="space-y-3 mb-8 text-vanilla/80">
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-pacific"></span>
-                  1 full carousel generation with exports
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-pacific"></span>
-                  AI captions and hashtags for your test post
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-pacific"></span>
-                  Direct Instagram posting or scheduling for that carousel
-                </li>
-              </ul>
-              <Link 
-                to="/signup"
-                className="sf-btn-secondary w-full justify-center"
-              >
-                Start free — generate your first carousel
-              </Link>
-            </div>
-
-            {/* Premium Plan */}
-            <div className="bg-gradient-to-br from-pacific to-slate text-vanilla rounded-xl p-8 shadow-soft border border-charcoal/40 relative overflow-hidden">
-              <div className="absolute top-4 right-4">
-                <span className="bg-ink/50 text-vanilla px-3 py-1 rounded-sm text-xs font-semibold border border-vanilla/20">
-                  Popular
-                </span>
-              </div>
-              <h3 className="text-2xl font-bold mb-2">Premium</h3>
-              <p className="text-vanilla/80 mb-4">For creators and teams who publish carousels regularly.</p>
-              <div className="mb-6">
-                <span className="text-4xl font-bold">$9</span>
-                <span className="text-vanilla/80 ml-2">/month</span>
-              </div>
-              <ul className="space-y-3 mb-8 text-vanilla/90">
-                <li className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Unlimited carousel generations
-                </li>
-                <li className="flex items-center gap-2">
-                  <Palette className="h-4 w-4" />
-                  Saved brand presets (colors and fonts)
-                </li>
-                <li className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  AI-written captions and hashtags
-                </li>
-                <li className="flex items-center gap-2">
-                  <Instagram className="h-4 w-4" />
-                  Direct Instagram posting + scheduling
-                </li>
-                <li className="flex items-center gap-2">
-                  <Download className="h-4 w-4" />
-                  Export updated slides anytime
-                </li>
-              </ul>
-              <button 
-                onClick={handleStartPremium}
-                disabled={loading}
-                className="sf-btn-secondary w-full justify-center bg-ink/20 hover:bg-ink/30 border-vanilla/30 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Loading...' : 'Upgrade to Premium'}
-              </button>
-              <p className="text-sm text-vanilla/70 mt-4 text-center">Cancel anytime from your profile. No long-term contracts.</p>
-            </div>
+          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
+            {pricingPlans.map((plan) => {
+              const isPopular = plan.tone === 'popular';
+              const isPremium = plan.tone === 'premium';
+              const isMuted = plan.tone === 'muted';
+              const isCreator = plan.key === 'creator';
+              const isAccent = isPremium || isPopular;
+              const cardClass = isPremium
+                ? 'relative overflow-hidden rounded-xl p-7 shadow-soft border border-pacific/40 bg-gradient-to-br from-ink via-surface-alt to-pacific/40 text-vanilla'
+                : isPopular
+                ? 'relative overflow-hidden rounded-xl p-7 shadow-soft border border-pacific/60 bg-gradient-to-br from-pacific via-pacific-deep to-slate text-vanilla'
+                : isMuted
+                ? 'sf-card p-7 bg-surface/70 text-vanilla/80'
+                : 'sf-card p-7';
+              const badgeClass = isPremium
+                ? 'bg-ink/60 text-vanilla border border-vanilla/20'
+                : isPopular
+                ? 'bg-ink/30 text-vanilla border border-vanilla/30'
+                : 'bg-surface text-vanilla/70';
+              return (
+                <div key={plan.key} className={cardClass}>
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-2xl font-bold">{plan.name}</h3>
+                      <p className={`text-sm ${isAccent ? 'text-vanilla/85' : 'text-vanilla/70'}`}>
+                        {plan.description}
+                      </p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-sm text-xs font-semibold ${badgeClass}`}>
+                      {plan.badge}
+                    </span>
+                  </div>
+                  <div className="mb-5">
+                    <span className="text-4xl font-bold text-vanilla">{plan.price}</span>
+                    <span className={`ml-2 ${isAccent ? 'text-vanilla/80' : 'text-vanilla/70'}`}>
+                      {plan.cadence}
+                    </span>
+                    <div className={`text-sm mt-2 ${isAccent ? 'text-vanilla/80' : 'text-vanilla/70'}`}>
+                      {plan.credits}
+                    </div>
+                  </div>
+                  <ul className={`space-y-3 mb-6 ${isAccent ? 'text-vanilla/90' : 'text-vanilla/80'}`}>
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2">
+                        <span
+                          className={`mt-2 h-2 w-2 rounded-full ${
+                            plan.key === 'studio'
+                              ? 'bg-pacific'
+                              : isPopular
+                              ? 'bg-vanilla/90'
+                              : 'bg-pacific'
+                          }`}
+                        ></span>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {plan.cta.to ? (
+                    <Link to={plan.cta.to} className="sf-btn-secondary w-full justify-center">
+                      {plan.cta.label}
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={handleStartPremium}
+                      disabled={loading}
+                      className={`sf-btn-secondary w-full justify-center ${
+                        isCreator
+                          ? 'bg-vanilla/15 hover:bg-vanilla/25 border-vanilla/40 text-vanilla'
+                          : isPremium
+                          ? 'bg-ink/30 hover:bg-ink/40 border-vanilla/30'
+                          : ''
+                      } disabled:opacity-60 disabled:cursor-not-allowed`}
+                    >
+                      {loading ? 'Loading...' : plan.cta.label}
+                    </button>
+                  )}
+                  {isPremium && (
+                    <p className="text-xs text-vanilla/70 mt-4 text-center">
+                      Cancel anytime. Upgrade or downgrade when your credit needs change.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

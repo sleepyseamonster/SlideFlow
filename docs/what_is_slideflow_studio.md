@@ -52,6 +52,8 @@ Placement is programmatic and AI‑assisted:
 - The system finds safe zones and visually balanced positions
 - Text is applied using precise colors the user selects
 
+Studio also supports simple image overlays (e.g., logo badges) to keep branding consistent without heavy design tools.
+
 This light overlay system is perfect for titles, hooks, and product labels.
 
 ### **2.4 Export Back to SlideFlow**
@@ -148,3 +150,8 @@ It offers:
 
 SlideFlow Studio keeps the process fast, accessible, and optimized for Instagram—empowering users to create better content, faster, while strengthening SlideFlow’s position as a complete carousel creation platform.
 
+---
+
+## Current Build Status
+
+The Studio product vision is established, and the UI layout is now implemented. Editing actions and exports are still being wired. See `docs/slide_flow_studio_sop.md` for the current behavior and implementation notes.

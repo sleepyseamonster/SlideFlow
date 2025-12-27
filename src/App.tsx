@@ -10,12 +10,14 @@ import GenerateCaption from './pages/GenerateCaption';
 import Publish from './pages/Publish';
 import CalendarPage from './pages/Calendar';
 import Profile from './pages/Profile';
+import AccountSettings from './pages/AccountSettings';
 import Billing from './pages/Billing';
+import Plans from './pages/Plans';
 import MediaLibrary from './pages/MediaLibrary';
 import BrandProfile from './pages/BrandProfile';
 import SlideFlowStudio from './pages/SlideFlowStudio';
 import { CarouselProvider } from './contexts/CarouselContext';
-import { ContentLibraryProvider } from './contexts/ContentLibraryContext';
+import { MediaLibraryProvider } from './contexts/MediaLibraryContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -44,7 +46,7 @@ function LegacyResultsRedirect() {
 function App() {
   return (
     <AuthProvider>
-      <ContentLibraryProvider>
+      <MediaLibraryProvider>
         <CarouselProvider>
           <Router>
             <div className="min-h-screen bg-ink text-vanilla">
@@ -90,6 +92,11 @@ function App() {
                     <Profile />
                   </ProtectedRoute>
                 } />
+                <Route path="/account-settings" element={
+                  <ProtectedRoute>
+                    <AccountSettings />
+                  </ProtectedRoute>
+                } />
                 <Route path="/brand-profile" element={
                   <ProtectedRoute>
                     <BrandProfile />
@@ -100,17 +107,21 @@ function App() {
                     <Billing />
                   </ProtectedRoute>
                 } />
+                <Route path="/plans" element={
+                  <ProtectedRoute>
+                    <Plans />
+                  </ProtectedRoute>
+                } />
                 <Route path="/media-library" element={
                   <ProtectedRoute>
                     <MediaLibrary />
                   </ProtectedRoute>
                 } />
-                <Route path="/content-library" element={<Navigate to="/media-library" replace />} />
               </Routes>
             </div>
           </Router>
         </CarouselProvider>
-      </ContentLibraryProvider>
+      </MediaLibraryProvider>
     </AuthProvider>
   );
 }

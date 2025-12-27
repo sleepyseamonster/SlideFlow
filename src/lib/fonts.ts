@@ -1,0 +1,336 @@
+export type FontRole = 'primary' | 'body';
+export type FontCategory = 'sans' | 'serif' | 'display' | 'mono';
+export type FontIntent = 'neutral' | 'friendly' | 'modern' | 'editorial' | 'bold' | 'playful';
+
+export type FontDefinition = {
+  id: string;
+  name: string;
+  category: FontCategory;
+  roles: FontRole[];
+  weights: number[];
+  intent: FontIntent;
+  cssFamily: string;
+  source: 'google';
+};
+
+export const FONT_FALLBACK_SANS =
+  'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+export const FONT_FALLBACK_SERIF = 'ui-serif, Georgia, "Times New Roman", Times, serif';
+
+export const FONT_REGISTRY: Record<string, FontDefinition> = {
+  inter: {
+    id: 'inter',
+    name: 'Inter',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'neutral',
+    cssFamily: `"Inter", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  roboto: {
+    id: 'roboto',
+    name: 'Roboto',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 700],
+    intent: 'neutral',
+    cssFamily: `"Roboto", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  'open-sans': {
+    id: 'open-sans',
+    name: 'Open Sans',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'neutral',
+    cssFamily: `"Open Sans", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  lato: {
+    id: 'lato',
+    name: 'Lato',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 700],
+    intent: 'friendly',
+    cssFamily: `"Lato", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  nunito: {
+    id: 'nunito',
+    name: 'Nunito',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'friendly',
+    cssFamily: `"Nunito", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  ubuntu: {
+    id: 'ubuntu',
+    name: 'Ubuntu',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 700],
+    intent: 'modern',
+    cssFamily: `"Ubuntu", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  'source-sans-3': {
+    id: 'source-sans-3',
+    name: 'Source Sans 3',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'neutral',
+    cssFamily: `"Source Sans 3", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  manrope: {
+    id: 'manrope',
+    name: 'Manrope',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'modern',
+    cssFamily: `"Manrope", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  'dm-sans': {
+    id: 'dm-sans',
+    name: 'DM Sans',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 700],
+    intent: 'friendly',
+    cssFamily: `"DM Sans", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  figtree: {
+    id: 'figtree',
+    name: 'Figtree',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'modern',
+    cssFamily: `"Figtree", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  'work-sans': {
+    id: 'work-sans',
+    name: 'Work Sans',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'neutral',
+    cssFamily: `"Work Sans", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  'plus-jakarta-sans': {
+    id: 'plus-jakarta-sans',
+    name: 'Plus Jakarta Sans',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'modern',
+    cssFamily: `"Plus Jakarta Sans", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  rubik: {
+    id: 'rubik',
+    name: 'Rubik',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'friendly',
+    cssFamily: `"Rubik", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  quicksand: {
+    id: 'quicksand',
+    name: 'Quicksand',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'playful',
+    cssFamily: `"Quicksand", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  karla: {
+    id: 'karla',
+    name: 'Karla',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'neutral',
+    cssFamily: `"Karla", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  cabin: {
+    id: 'cabin',
+    name: 'Cabin',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'neutral',
+    cssFamily: `"Cabin", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  'space-grotesk': {
+    id: 'space-grotesk',
+    name: 'Space Grotesk',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'modern',
+    cssFamily: `"Space Grotesk", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  montserrat: {
+    id: 'montserrat',
+    name: 'Montserrat',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'modern',
+    cssFamily: `"Montserrat", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  poppins: {
+    id: 'poppins',
+    name: 'Poppins',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'playful',
+    cssFamily: `"Poppins", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  raleway: {
+    id: 'raleway',
+    name: 'Raleway',
+    category: 'sans',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'editorial',
+    cssFamily: `"Raleway", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  oswald: {
+    id: 'oswald',
+    name: 'Oswald',
+    category: 'display',
+    roles: ['primary'],
+    weights: [400, 500, 600, 700],
+    intent: 'bold',
+    cssFamily: `"Oswald", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  'bebas-neue': {
+    id: 'bebas-neue',
+    name: 'Bebas Neue',
+    category: 'display',
+    roles: ['primary'],
+    weights: [400],
+    intent: 'bold',
+    cssFamily: `"Bebas Neue", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  'league-spartan': {
+    id: 'league-spartan',
+    name: 'League Spartan',
+    category: 'display',
+    roles: ['primary'],
+    weights: [400, 500, 600, 700],
+    intent: 'bold',
+    cssFamily: `"League Spartan", ${FONT_FALLBACK_SANS}`,
+    source: 'google',
+  },
+  'abril-fatface': {
+    id: 'abril-fatface',
+    name: 'Abril Fatface',
+    category: 'display',
+    roles: ['primary'],
+    weights: [400],
+    intent: 'editorial',
+    cssFamily: `"Abril Fatface", ${FONT_FALLBACK_SERIF}`,
+    source: 'google',
+  },
+  'playfair-display': {
+    id: 'playfair-display',
+    name: 'Playfair Display',
+    category: 'serif',
+    roles: ['primary'],
+    weights: [400, 500, 600, 700],
+    intent: 'editorial',
+    cssFamily: `"Playfair Display", ${FONT_FALLBACK_SERIF}`,
+    source: 'google',
+  },
+  lora: {
+    id: 'lora',
+    name: 'Lora',
+    category: 'serif',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'editorial',
+    cssFamily: `"Lora", ${FONT_FALLBACK_SERIF}`,
+    source: 'google',
+  },
+  merriweather: {
+    id: 'merriweather',
+    name: 'Merriweather',
+    category: 'serif',
+    roles: ['primary', 'body'],
+    weights: [400, 700],
+    intent: 'editorial',
+    cssFamily: `"Merriweather", ${FONT_FALLBACK_SERIF}`,
+    source: 'google',
+  },
+  'noto-serif': {
+    id: 'noto-serif',
+    name: 'Noto Serif',
+    category: 'serif',
+    roles: ['primary', 'body'],
+    weights: [400, 500, 600, 700],
+    intent: 'neutral',
+    cssFamily: `"Noto Serif", ${FONT_FALLBACK_SERIF}`,
+    source: 'google',
+  },
+  'pt-serif': {
+    id: 'pt-serif',
+    name: 'PT Serif',
+    category: 'serif',
+    roles: ['primary', 'body'],
+    weights: [400, 700],
+    intent: 'editorial',
+    cssFamily: `"PT Serif", ${FONT_FALLBACK_SERIF}`,
+    source: 'google',
+  },
+  'libre-baskerville': {
+    id: 'libre-baskerville',
+    name: 'Libre Baskerville',
+    category: 'serif',
+    roles: ['primary', 'body'],
+    weights: [400, 700],
+    intent: 'editorial',
+    cssFamily: `"Libre Baskerville", ${FONT_FALLBACK_SERIF}`,
+    source: 'google',
+  },
+};
+
+export const DEFAULT_PRIMARY_FONT_ID = 'inter';
+export const DEFAULT_BODY_FONT_ID = 'inter';
+
+export function getFont(id: string | null | undefined): FontDefinition {
+  if (!id) return FONT_REGISTRY[DEFAULT_PRIMARY_FONT_ID];
+  return FONT_REGISTRY[id] ?? FONT_REGISTRY[DEFAULT_PRIMARY_FONT_ID];
+}
+
+export function getFontOptions(role: FontRole): Array<{ id: string; name: string; category: FontCategory; intent: FontIntent }> {
+  return Object.values(FONT_REGISTRY)
+    .filter((font) => font.roles.includes(role))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((font) => ({ id: font.id, name: font.name, category: font.category, intent: font.intent }));
+}

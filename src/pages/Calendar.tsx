@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Clock3, GripVertical, X } from 'lucide-react';
+import { Clock3, GripVertical, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import PageDots from '../components/PageDots';
 import { useCarousel } from '../contexts/CarouselContext';
@@ -43,15 +43,6 @@ const formatDateKeyWithZone = (utcISOString: string, timeZone?: string) => {
     day: '2-digit',
   });
   return formatter.format(new Date(utcISOString));
-};
-
-const formatTimeLabel = (time: string) => {
-  if (!time.includes(':')) return time;
-  const [hourString, minute] = time.split(':');
-  const hour = Number.parseInt(hourString, 10);
-  const isPm = hour >= 12;
-  const printableHour = ((hour + 11) % 12) + 1;
-  return `${printableHour}:${minute} ${isPm ? 'PM' : 'AM'}`;
 };
 
 const formatDisplayTime = (isoString: string, timeZone?: string) =>
@@ -252,9 +243,9 @@ export default function CalendarPage() {
     () =>
       carousels.filter((carousel) => {
         const status = carousel.status?.toLowerCase();
-        const isPosted = status === 'posted';
+        const isPublished = status === 'published' || status === 'posted';
         const isScheduled = status === 'scheduled' || Boolean(scheduled[carousel.id]);
-        return !isPosted && !isScheduled;
+        return !isPublished && !isScheduled;
       }),
     [carousels, scheduled]
   );
@@ -309,6 +300,8 @@ export default function CalendarPage() {
 
       const next: Record<string, ScheduledEntry> = {};
       (data || []).forEach((row) => {
+        const carousel = carousels.find((item) => item.id === row.carousel_id);
+        if ((carousel?.status || '').toLowerCase() === 'published') return;
         const scheduledAt = row.scheduled_at as string;
         const dateKey = formatDateKeyWithZone(scheduledAt, row.timezone || timeZoneLabel);
         const displayTime = formatDisplayTime(scheduledAt, row.timezone || timeZoneLabel);
@@ -317,7 +310,7 @@ export default function CalendarPage() {
           dateKey,
           scheduledAt,
           displayTime,
-          title: carousels.find((c) => c.id === row.carousel_id)?.title || 'Scheduled carousel',
+          title: carousel?.title || 'Scheduled carousel',
           thumbnail: thumbnails[row.carousel_id],
           status: row.status,
           timezone: row.timezone || timeZoneLabel,
@@ -363,6 +356,12 @@ export default function CalendarPage() {
         setShowModal(false);
         return;
       }
+      if ((found.status || '').toLowerCase() === 'published') {
+        setToast('Published carousels cannot be scheduled.');
+        setShowModal(false);
+        setTimeout(() => setToast(null), 3000);
+        return;
+      }
       const iso = toUtcISOString(pendingSchedule.dateKey, timeInput, timeZoneLabel);
 
       const rescheduleNeeded = Boolean(scheduled[pendingSchedule.carouselId]);
@@ -405,8 +404,9 @@ export default function CalendarPage() {
           }));
           void refreshCarousels();
         }
-      } catch (err: any) {
-        setToast(err?.message || 'Could not schedule. Try another time slot.');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : null;
+        setToast(message || 'Could not schedule. Try another time slot.');
       } finally {
         setShowModal(false);
         setTimeout(() => setToast(null), 3000);
@@ -427,8 +427,9 @@ export default function CalendarPage() {
           return next;
         });
         void refreshCarousels();
-      } catch (err: any) {
-        setToast(err?.message || 'Could not unschedule right now.');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : null;
+        setToast(message || 'Could not unschedule right now.');
       } finally {
         setShowModal(false);
         setTimeout(() => setToast(null), 3000);

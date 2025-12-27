@@ -1,11 +1,17 @@
-# Known Issues (Updated 2025-02-13)
+# Known Issues (Updated 2025-12-26)
 
 Legend: P1 = high, P2 = medium, P3 = low. Workarounds and next steps noted where known.
 
 ## P1 (High)
 
+- **SlideBoard breaks after returning from Generate (reorder no-op + “no carousel”)**  
+  - Repro: Create a new carousel, add slides in SlideBoard, Continue to Generate, wait for all uploads to finish, then click “Back to Slideboard.” On SlideBoard, drag/drop does nothing, Continue shows “No slides found / Create a new carousel.”  
+  - Console: `blob:* net::ERR_FILE_NOT_FOUND`, Supabase storage `net::ERR_FAILED`, `StorageUnknownError: Failed to fetch` during `persistDraftSlidesToSupabase`.  
+  - Impact: users cannot rearrange after returning; navigation forward breaks.  
+  - Urgency: **major/urgent**, blocks core workflow.
+
 - **Media Library bulk delete does nothing (UI no-op)**  
-  - The top “Delete (X)” bulk action shows no confirm dialog and removes nothing, even with selections; per-card trash still works. Attempted fixes: refreshed Supabase session before deletion, awaited `removeImage`, added deleting-state + confirm dialog, refreshed library after deletes (`MediaLibrary.tsx`, `ContentLibraryContext.tsx`). Cleared bucket/data and retested—still broken.  
+  - The top “Delete (X)” bulk action shows no confirm dialog and removes nothing, even with selections; per-card trash still works. Attempted fixes: refreshed Supabase session before deletion, awaited `removeImage`, added deleting-state + confirm dialog, refreshed library after deletes (`MediaLibrary.tsx`, `MediaLibraryContext.tsx`). Cleared bucket/data and retested—still broken.  
   - Next steps: instrument `handleBulkDelete` click, verify the button renders when `selectedImages.size > 0`, ensure `selectedImages` survives filters/search. Consider extracting logic into a dedicated hook/test to confirm invocation.
 
 - **Media Library → SlideBoard multi-import clears slots**  
@@ -38,6 +44,12 @@ Legend: P1 = high, P2 = medium, P3 = low. Workarounds and next steps noted where
 - **Dashboard duplicate action fails**  
   - Clicking “Duplicate” can alert “Could not duplicate this carousel right now. Please try again.” Likely Supabase insert/permissions or missing schema support during deep copy.  
   - Workaround: manually create a new carousel and copy content until fixed.
+
+- **Meta connect shows unexpected IG/Page pairs**  
+  - Meta consent can return multiple Pages/IGs and the UI may display assets the user didn’t intend. Users must click “Edit access” in the Meta consent screen and explicitly pick the desired Page + IG; otherwise all returned assets are stored. Debug info is available via the Profile error `reason` code and Edge Function logs (`meta-oauth-callback`).
+
+- **Meta disconnect RPC failures**  
+  - `revoke_connected_account` previously threw 400/ambiguous errors (`account_id` name collision) and later cache misses after parameter rename. Apply migration `20251218000004_fix_revoke_connected_account.sql` (restores the `account_id` parameter name and qualifies columns) to fix the RPC; redeploy if the RPC was cached.
 
 - **Lint debt (~53 errors)**  
   - `npm run lint -- --quiet` reports unused imports/vars, `any` usage, and regex escape issues. Examples:  

@@ -1,4 +1,5 @@
 @import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Bebas+Neue&family=Cabin:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Figtree:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Karla:wght@400;500;600;700&family=Lato:wght@400;700&family=League+Spartan:wght@400;500;600;700&family=Libre+Baskerville:wght@400;700&family=Lora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Montserrat:wght@400;500;600;700&family=Noto+Serif:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Open+Sans:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=PT+Serif:wght@400;700&family=Quicksand:wght@400;500;600;700&family=Raleway:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Rubik:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Ubuntu:wght@400;500;700&family=Work+Sans:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -74,6 +75,102 @@
   .sf-label {
     @apply block text-sm font-medium text-vanilla/90 mb-2;
   }
+
+  .sf-studio-toolpanel {
+    @apply text-sm;
+  }
+
+  .sf-studio-toolpanel .sf-btn-primary {
+    @apply px-3 py-2 text-sm;
+  }
+
+  .sf-studio-toolpanel .sf-btn-secondary {
+    @apply px-3 py-2 text-sm;
+  }
+
+  .sf-studio-toolpanel .sf-input {
+    @apply px-3 py-2 text-sm;
+  }
+
+  .sf-studio-toolpanel .sf-label {
+    @apply text-xs mb-1;
+  }
+
+  .sf-color-square {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    border-radius: 6px;
+    border: 1px solid rgba(82, 82, 80, 0.6);
+    overflow: hidden;
+    cursor: crosshair;
+  }
+
+  .sf-color-square-white {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, #ffffff, rgba(255, 255, 255, 0));
+  }
+
+  .sf-color-square-black {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, #000000, rgba(0, 0, 0, 0));
+  }
+
+  .sf-color-thumb {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+    transform: translate(-7px, -7px);
+    pointer-events: none;
+  }
+
+  .sf-color-hue {
+    width: 100%;
+    height: 8px;
+    appearance: none;
+    border-radius: 999px;
+    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+  }
+
+  .sf-color-hue::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: #f2ecda;
+    border: 2px solid rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+
+  .sf-color-hue::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: #f2ecda;
+    border: 2px solid rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+
+  .sf-color-hex {
+    @apply inline-flex items-center gap-1 rounded-md border border-charcoal/60 bg-surface-alt px-2 py-1 text-[11px] text-vanilla/80;
+  }
+
+  .sf-color-hex-input {
+    width: 64px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #E9E3CD;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
 
   .sf-shimmer-text {
     position: relative;

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Sparkles } from 'lucide-react';
 
 interface NavbarProps {
   transparent?: boolean;
@@ -9,6 +9,9 @@ interface NavbarProps {
 
 export default function Navbar({ transparent = false }: NavbarProps) {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const displayName = user?.name?.trim() || user?.email?.split('@')[0] || 'Account';
+  const isStudio = location.pathname.startsWith('/studio');
 
   return (
     <nav
@@ -27,6 +30,12 @@ export default function Navbar({ transparent = false }: NavbarProps) {
                 alt="SlideFlow"
                 className="h-8 w-auto"
               />
+              {isStudio && (
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-vanilla tracking-wide">
+                  Studio
+                  <Sparkles className="h-4 w-4 text-pacific" />
+                </span>
+              )}
             </Link>
           </div>
 
@@ -42,7 +51,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
                 <div className="relative group">
                   <button className="flex items-center space-x-2 px-3 py-2 rounded-md text-vanilla/80 hover:text-vanilla hover:bg-surface-muted transition-colors border border-transparent group-hover:border-charcoal/50">
                     <User className="h-5 w-5" />
-                    <span className="text-sm">{user.name}</span>
+                    <span className="text-sm">{displayName}</span>
                   </button>
                   <div className="absolute right-0 mt-3 w-52 bg-surface-alt rounded-lg shadow-soft border border-charcoal/50 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                     <Link

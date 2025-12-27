@@ -7,15 +7,21 @@
 - **Preset management**: create, list, apply, delete brand presets (colors, fonts, default style). Previously “Apply preset” + “Save as Preset”.
 - **Style selection**: choose the base style (`minimalist`/`bold`/`elegant` as of now).
 - **Brand palette**: primary, secondary, accent1, accent2 color pickers; option to skip custom colors.
-- **Typography**: primary and secondary font selectors; option to skip custom fonts.
+- **Typography**: primary and body font selectors from the centralized registry (`src/lib/fonts.ts`).
 
 ## Data model + storage notes
 - Supabase `brand_profile` table already used by the old “Save as Preset” flow; payload expected by `/all-data`:
   - `brand_profile.defaults.style`
   - `brand_profile.palette` (`primary`, `secondary`, `accent1`, `accent2`)
-  - `brand_profile.fonts` (`primary`, `secondary`)
+  - `brand_profile.fonts` (`primary`, `body`)
 - Presets were cached in `localStorage` (`slideflow_brand_presets`); decide whether to keep local cache or read-only from Supabase.
 - When the Brand Profile page is ready, load the user’s saved profile/presets on page load and allow save/update/delete.
+
+## Font system notes
+- Font options come from the approved registry: `src/lib/fonts.ts` (Google Fonts only).
+- Store font **IDs** (e.g. `inter`, `playfair-display`) rather than names.
+- UI font is not user-configurable; only Primary/Body are.
+- See `docs/font_system.md` for how to add new fonts safely.
 
 ## Integration back into Generator
 - Generator currently sends a minimal brand profile (`style: "minimalist"`, empty palette/fonts). When Brand Profile is live:

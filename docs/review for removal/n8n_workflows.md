@@ -1,5 +1,7 @@
 # n8n Workflows & Webhooks (Condensed)
 
+Status note: this document reflects a legacy/experimental automation layer. Current direction is to implement integrations and publishing directly in code (Supabase Edge Functions + app UI), starting with Meta connection (`docs/meta_connection_setup.md`).
+
 ## /all-data Carousel Workflow
 1. **Webhook Intake**: Receives Bolt payload containing `uploaded_files[]`, `carousel{title,aspect}`, etc.
 2. **Auth Chain**:

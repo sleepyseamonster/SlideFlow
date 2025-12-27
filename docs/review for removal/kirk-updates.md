@@ -16,7 +16,7 @@ Purpose: running, date-stamped notes for changes made locally after cloning the 
 ## 2025-11-25
 - Added environment files locally (`.env`, `.env.local`) with Supabase URL/anon key; `src/lib/supabase.ts` now guards missing env vars to prevent blank-screen errors.
 - Fixed storage path to match RLS (`<userId>/<date>/...`); `Generator` uploads now auto-add uploaded files into the media library after Supabase upload.
-- `ContentLibraryContext`: fetches existing storage objects from Supabase (handles both `<userId>/...` and legacy `user_<userId>/...`), signs URLs, dedupes, and removes from storage when deleted in UI.
+- `MediaLibraryContext`: fetches existing storage objects from Supabase (handles both `<userId>/...` and legacy `user_<userId>/...`), signs URLs, dedupes, and removes from storage when deleted in UI.
 - `ImportLibraryModal`: importing remote library items now fetches and rehydrates them as `File` objects; added select-all toggle (with slate styling) in the Media Library header.
 - Created this log under `docs/kirk-updates.md` for ongoing updates.
 
@@ -29,6 +29,16 @@ Purpose: running, date-stamped notes for changes made locally after cloning the 
 - Publish: restyled the SlideFlow Studio card (square badge, bullet grid, accurate capabilities copy, tighter footer), set Go to Studio/Publish buttons to dark default with bright hover glow, and reduced padding on the action row.
 - Publish: refreshed Studio bullets (crop/resize presets, AI background swap/remove, on-brand overlays, export/save PNGs) and footer (“Slides and captions carry over”).
 - Generate Caption: tightened Studio card spacing, downsized tagline weight/size, moved helper + Go to Studio CTA to the right, and added a spinner overlay to the disabled Next button while slides are loading.
+
+## 2025-12-18
+- Implemented Meta connection (Instagram Business + Facebook Page) via Supabase Auth (Facebook provider), a dedicated `/meta/callback` route, and a new `meta-connect` Supabase Edge Function.
+- Added connected-account persistence in Supabase (`connected_account` + `connected_account_secret`) plus RPCs to set a single default destination and disconnect/revoke accounts.
+- Profile page now supports multi-destination management: list destinations, set default, refresh, and disconnect; updated docs for setup and schema.
+
+## 2025-12-20
+- Meta connect hardened and simplified: canonical flow is server-side OAuth via `meta-oauth-start` + `meta-oauth-callback` (signed state, redirect-base validation, appsecret_proof).
+- Callback runs with JWT verification disabled (config + deploy flag) to avoid Meta redirect 401s; frontend invoke sends the Supabase access token.
+- Marked `meta-connect`/`/meta/callback` as legacy; docs updated to the new flow.
 
 ## How to extend this log
 - Add new sections by date (`YYYY-MM-DD`) with bullets for changes, rationale, and any follow-up/TODOs.

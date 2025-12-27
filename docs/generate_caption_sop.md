@@ -26,6 +26,7 @@ Scope: How the Generate Caption page works, how to operate it end-to-end, and im
 - SlideFlow Studio card:
   - Title in brand blue; helper copy “Need to crop your images better?”
   - “Go to Studio” CTA has inactive brown state; first click activates (teal), second click navigates to `/studio`.
+  - Navigation state includes `{ from: 'generate', carousel, caption }` so Studio can render slides and return here.
 
 ## 3) Core Behaviors
 - Activation (“Next/Click” in Generate Caption):
@@ -67,6 +68,7 @@ Scope: How the Generate Caption page works, how to operate it end-to-end, and im
   - For Save Caption, optionally auto-tag and push to library with a “Saved captions” filter.
 - Studio CTA behavior:
   - If you want single-click nav, remove the `studioActive` toggle and navigate directly once prerequisites (if any) are met.
+  - Studio uses the `from` field to render a "Back to Generate" link and passes `{ carousel, caption }` back on return.
 - Validation:
   - Keep prompt/caption limits in sync with backend; surface remaining chars near the fields (already shown).
   - If adding profanity/PII checks, hook into `onBlur` or pre-publish validation.

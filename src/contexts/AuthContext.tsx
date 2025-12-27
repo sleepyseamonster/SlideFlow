@@ -1,28 +1,40 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { normalizePlan, PLAN_MAX_CAROUSELS, type PlanKey } from '../lib/plans';
 
 interface User {
   id: string;
   email: string;
   name: string;
-  plan: 'free' | 'premium';
+  plan: PlanKey;
   carouselsGenerated: number;
   maxCarousels: number;
+  creditsBalance?: number;
+  creditsBuckets?: {
+    subscription?: number;
+    purchased?: number;
+    bonus?: number;
+  };
+  creditsRenewalAt?: string | null;
   instagramConnected: boolean;
   instagramBusinessAccountId?: string;
-  facebookAccessToken?: string;
+  instagramUsername?: string;
+  connectedAccountId?: string;
+  facebookPageId?: string;
+  facebookPageName?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   loginWithFacebook: () => Promise<boolean>;
-  connectInstagram: () => Promise<boolean>;
+  connectInstagram: () => Promise<{ ok: boolean; error?: string }>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
   updateUser: (updates: Partial<User>) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -76,17 +88,60 @@ export function AuthProvider({ children }: AuthProviderProps) {
       .eq('id', supabaseUser.id)
       .maybeSingle();
 
+    const { data: connectedAccounts } = await supabase
+      .from('connected_account')
+      .select('id, ig_user_id, ig_username, page_id, page_name, is_primary')
+      .eq('user_id', supabaseUser.id)
+      .eq('platform', 'instagram')
+      .is('revoked_at', null);
+
+    const primaryAccount =
+      connectedAccounts?.find((account) => account.is_primary) ||
+      connectedAccounts?.[0] ||
+      null;
+
+    const planKey = normalizePlan(profile?.plan);
+    const creditsBalance = profile?.credits_balance ?? profile?.credits ?? null;
+    const creditBuckets =
+      profile?.subscription_balance ||
+      profile?.purchased_balance ||
+      profile?.bonus_balance
+        ? {
+            subscription: profile?.subscription_balance,
+            purchased: profile?.purchased_balance,
+            bonus: profile?.bonus_balance,
+          }
+        : undefined;
+
+    const emailLower = (supabaseUser.email || '').toLowerCase();
+    const kirkEmail = 'kirkartman00@gmail.com';
+    // Temporary override to mirror requested account state until billing/credits are fully wired.
+    const effectivePlan: PlanKey = emailLower === kirkEmail ? 'creator' : planKey;
+    const effectiveCredits =
+      emailLower === kirkEmail ? Math.max(creditsBalance ?? 0, 300) : creditsBalance ?? undefined;
+
     // Create user with Supabase data and profile data
     const appUser: User = {
       id: supabaseUser.id,
       email: supabaseUser.email || '',
-      name: profile?.name || supabaseUser.user_metadata?.name || supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-      plan: profile?.plan || 'free',
+      name:
+        profile?.name ||
+        supabaseUser.user_metadata?.name ||
+        supabaseUser.user_metadata?.full_name ||
+        supabaseUser.email?.split('@')[0] ||
+        'User',
+      plan: effectivePlan,
       carouselsGenerated: profile?.carousels_generated || 0,
-      maxCarousels: profile?.max_carousels || 1,
-      instagramConnected: !!supabaseUser.user_metadata?.instagram_business_account_id,
-      instagramBusinessAccountId: supabaseUser.user_metadata?.instagram_business_account_id,
-      facebookAccessToken: supabaseUser.user_metadata?.provider_token
+      maxCarousels: profile?.max_carousels || PLAN_MAX_CAROUSELS[effectivePlan] || 1,
+      creditsBalance: effectiveCredits,
+      creditsBuckets: creditBuckets,
+      creditsRenewalAt: profile?.credits_renewal_at ?? null,
+      instagramConnected: !!connectedAccounts?.length,
+      instagramBusinessAccountId: primaryAccount?.ig_user_id,
+      instagramUsername: primaryAccount?.ig_username ?? undefined,
+      connectedAccountId: primaryAccount?.id,
+      facebookPageId: primaryAccount?.page_id,
+      facebookPageName: primaryAccount?.page_name ?? undefined,
     };
     setUser(appUser);
   };
@@ -132,25 +187,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const connectInstagram = async (): Promise<boolean> => {
+  const connectInstagram = async (): Promise<{ ok: boolean; error?: string }> => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'facebook',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-          scopes: 'instagram_basic,instagram_content_publish,pages_read_engagement,pages_show_list'
-        }
-      });
-
-      if (error) {
-        console.error('Instagram connection error:', error.message);
-        return false;
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('Instagram connection session error:', sessionError.message);
+      }
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        return { ok: false, error: 'You need to be logged in to connect Meta.' };
       }
 
-      return true;
+      const { data, error } = await supabase.functions.invoke('meta-oauth-start', {
+        body: { redirectBase: window.location.origin },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (error || !data?.authUrl) {
+        const message = error?.message || 'Failed to start Meta connection.';
+        return { ok: false, error: message };
+      }
+      window.location.href = data.authUrl as string;
+      return { ok: true };
     } catch (error) {
       console.error('Instagram connection error:', error);
-      return false;
+      const message = error instanceof Error ? error.message : 'Failed to start Meta connection.';
+      return { ok: false, error: message };
     }
   };
 
@@ -198,6 +259,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const refreshUser = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData.session?.user) {
+      await setUserFromSupabase(sessionData.session.user);
+    }
+  };
+
   const value = {
     user,
     login,
@@ -206,7 +274,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signup,
     logout,
     loading,
-    updateUser
+    updateUser,
+    refreshUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
