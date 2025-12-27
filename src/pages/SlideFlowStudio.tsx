@@ -6,7 +6,7 @@ import MediaLibraryModal, { type MediaLibraryTab } from '../components/MediaLibr
 import { supabase } from '../lib/supabase';
 import { DEFAULT_PRIMARY_FONT_ID, getFont, getFontOptions } from '../lib/fonts';
 import { useAuth } from '../contexts/AuthContext';
-import { type LibraryImage } from '../contexts/MediaLibraryContext';
+import { useMediaLibrary, type LibraryImage } from '../contexts/MediaLibraryContext';
 import {
   AlignCenter,
   AlignLeft,
@@ -351,6 +351,7 @@ const hsvToRgb = (h: number, s: number, v: number) => {
 export default function SlideFlowStudio() {
   const location = useLocation();
   const { user } = useAuth();
+  const { addUploadedFiles } = useMediaLibrary();
   const navState = location.state as
     | { from?: 'generate' | 'publish' | 'dashboard'; carousel?: Carousel; caption?: string }
     | null;
@@ -626,14 +627,14 @@ export default function SlideFlowStudio() {
     });
   };
 
-  const appendGeneratedSlide = (params: { image: string; status?: StudioLocalSlide['status'] }) => {
-    const { image, status = 'AI Enhanced' } = params;
+  const appendGeneratedSlide = (params: { image: string; status?: StudioLocalSlide['status']; label?: string }) => {
+    const { image, status = 'AI Enhanced', label } = params;
     setLocalSlides((prev) => {
       const nextIndex = carouselSlides.length + prev.length + 1;
       const newSlide: StudioLocalSlide = {
         id: `studio-generated-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         image,
-        label: `Slide ${nextIndex}`,
+        label: label ?? `Slide ${nextIndex}`,
         status,
       };
       const updated = [...prev, newSlide];
@@ -641,6 +642,8 @@ export default function SlideFlowStudio() {
       return updated;
     });
   };
+
+  const getNextStudioLabel = () => `Slide ${carouselSlides.length + localSlides.length + 1}`;
 
   useEffect(() => {
     return () => {
@@ -1144,6 +1147,7 @@ export default function SlideFlowStudio() {
         setEditedSlideImages((prev) => ({ ...prev, [activeSlide.id]: returnedSrc }));
       }
       requestHistoryCommit();
+      void persistStudioAsset(returnedSrc, 'bg-replace', activeSlide?.label);
       setToast('Background replaced (preview).');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Background replace failed.';
@@ -1232,7 +1236,9 @@ export default function SlideFlowStudio() {
         throw new Error('No image returned from image generation.');
       }
 
-      appendGeneratedSlide({ image: returnedSrc, status: 'AI Enhanced' });
+      const generatedLabel = getNextStudioLabel();
+      appendGeneratedSlide({ image: returnedSrc, status: 'AI Enhanced', label: generatedLabel });
+      void persistStudioAsset(returnedSrc, 'bg-generate', generatedLabel);
       setToast('Image generated.');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Image generation failed.';
@@ -1310,7 +1316,9 @@ export default function SlideFlowStudio() {
       }
 
       setVectorizeResultUrl(svgUrl);
-      appendGeneratedSlide({ image: svgUrl, status: 'AI Enhanced' });
+      const vectorLabel = getNextStudioLabel();
+      appendGeneratedSlide({ image: svgUrl, status: 'AI Enhanced', label: vectorLabel });
+      void persistStudioAsset(svgUrl, 'vectorize', vectorLabel);
       setToast('Vectorized to SVG.');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Vectorize failed.';
@@ -1385,6 +1393,7 @@ export default function SlideFlowStudio() {
 
       setEditedSlideImages((prev) => ({ ...prev, [activeSlide.id]: returnedSrc }));
       requestHistoryCommit();
+      void persistStudioAsset(returnedSrc, 'bg-remove', activeSlide.label);
       setToast('Background removed (preview).');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Background removal failed.';
@@ -1401,10 +1410,11 @@ export default function SlideFlowStudio() {
     }
     if (upscaleWorking) return;
 
+    const targetLabel = activeSlide.label;
     setUpscaleWorking(true);
     setUpscaleStatus('Starting…');
     setUpscaleTargetSlideId(activeSlide.id);
-    setUpscaleTargetSlideLabel(activeSlide.label);
+    setUpscaleTargetSlideLabel(targetLabel);
     setUpscaleLastOutputUrl(null);
     upscaleStartAtRef.current = Date.now();
     upscalePollTokenRef.current += 1;
@@ -1517,6 +1527,7 @@ export default function SlideFlowStudio() {
         if (token !== upscalePollTokenRef.current) return;
         setEditedSlideImages((prev) => ({ ...prev, [activeSlide.id]: returnedSrc }));
         requestHistoryCommit();
+        void persistStudioAsset(returnedSrc, 'upscale', targetLabel);
         setUpscaleLastOutputUrl(returnedSrc);
         const modelLabel =
           response.model === 'seedvr2'
@@ -2273,6 +2284,70 @@ export default function SlideFlowStudio() {
     };
   };
 
+  const persistStudioAsset = async (src: string, toolId: string, label?: string) => {
+    if (!user || !src) return;
+
+    try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) return;
+      try {
+        await supabase.auth.setSession({
+          access_token: session.data.session.access_token,
+          refresh_token: session.data.session.refresh_token ?? '',
+        });
+      } catch (err) {
+        console.warn('Failed to refresh Supabase session before studio save:', err);
+      }
+
+      const response = await fetch(src);
+      if (!response.ok) {
+        throw new Error(`Fetch failed (${response.status})`);
+      }
+      const blob = await response.blob();
+      const mime = blob.type || 'image/png';
+      const ext = mime === 'image/svg+xml' ? 'svg' : mime === 'image/jpeg' ? 'jpg' : 'png';
+      const safeLabel = getSafeFilename(label || 'Studio');
+      const filename = `${safeLabel}_${toolId}_${selectedAspect.replace(':', 'x')}.${ext}`;
+      const file = new File([blob], filename, { type: mime });
+
+      const uploaded = await uploadToMediaLibrary(user.id, file);
+      const displayName = label || uploaded.filename || filename;
+      const row = {
+        user_id: user.id,
+        bucket: uploaded.bucket,
+        path: uploaded.path,
+        filename: uploaded.filename,
+        display_name: displayName,
+        mime_type: uploaded.mime_type || mime,
+        size_bytes: uploaded.size_bytes || blob.size,
+        media_type: 'image',
+        visibility: 'private',
+        is_library: false,
+        is_studio: true,
+      };
+      const { error } = await supabase.from('media').insert([row]);
+      if (error) {
+        // If the column is missing in the DB, fall back to saving as a regular library item
+        const missingStudioFlag =
+          typeof error.message === 'string' && error.message.toLowerCase().includes('is_studio');
+        if (missingStudioFlag) {
+          const fallbackRow = { ...row, is_studio: undefined, is_library: true };
+          const { error: fallbackError } = await supabase.from('media').insert([fallbackRow]);
+          if (fallbackError) throw fallbackError;
+          await addUploadedFiles([{ ...uploaded, display_name: displayName, is_library: true }]);
+          setToast('Saved to Images tab (Studio flag not available yet).');
+          return;
+        }
+        throw error;
+      }
+
+      await addUploadedFiles([{ ...uploaded, display_name: displayName, is_studio: true }]);
+    } catch (err) {
+      console.error('Auto-save studio output failed:', err);
+      setToast('Auto-save to Studio failed. Please try manual Save while we investigate.');
+    }
+  };
+
   const handleSaveToLibrary = async () => {
     if (saveWorking) return;
     if (!user) {
@@ -2399,7 +2474,9 @@ export default function SlideFlowStudio() {
       const returnedSrc = response?.dataUrl || response?.image?.file_data || response?.url || response?.image?.url || '';
       if (!returnedSrc) throw new Error('No image returned from AI edit.');
 
-      appendGeneratedSlide({ image: returnedSrc, status: 'AI Enhanced' });
+      const editLabel = getNextStudioLabel();
+      appendGeneratedSlide({ image: returnedSrc, status: 'AI Enhanced', label: editLabel });
+      void persistStudioAsset(returnedSrc, 'ai-edit', editLabel);
       setToast('AI edit generated.');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI edit failed.';

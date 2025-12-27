@@ -169,17 +169,15 @@ export default function AccountSettings() {
     ? primaryDestinationParts.join(' - ')
     : 'Not set';
   const platformsLabel = hasMetaConnection ? 'Meta (Instagram, Facebook)' : 'Not connected';
-  const isProfileComplete = Boolean(user.name?.trim()) && hasMetaConnection;
-  const profileStatusLabel = isProfileComplete ? 'Fully configured' : 'Incomplete';
   const navButtons = [
     { label: 'Account Settings', to: '/account-settings', active: true },
     { label: 'Billing & Plans', to: '/billing', active: false },
   ];
   const navButtonClasses = (active: boolean) =>
-    `w-full rounded-2xl px-4 py-3 text-sm font-semibold text-left transition flex items-center justify-between ${
+    `flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors ${
       active
-        ? 'bg-gradient-to-r from-pacific/15 to-pacific/5 border border-pacific/60 text-pacific'
-        : 'bg-surface-alt border border-charcoal/50 text-vanilla/70 hover:border-pacific/60 hover:text-vanilla'
+        ? 'border-pacific/70 bg-pacific/15 text-vanilla'
+        : 'border-charcoal/50 text-vanilla/75 hover:bg-surface-muted'
     }`;
 
   return (
@@ -188,13 +186,23 @@ export default function AccountSettings() {
 
       <main className="pt-20 pb-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 text-pacific hover:text-vanilla font-semibold"
+          >
+            <span className="h-8 w-8 rounded-full bg-pacific/15 border border-pacific/40 flex items-center justify-center text-sm font-bold text-pacific">
+              ←
+            </span>
+            Back to Dashboard
+          </Link>
+
           <div className="space-y-1">
             <h1 className="text-3xl font-semibold">Account Settings</h1>
             <p className="text-vanilla/70">Update your identity details and login information.</p>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[1.25fr_2.75fr]">
-            <aside className="sf-card p-6 flex flex-col justify-between min-h-[520px] border border-charcoal/60 bg-surface/70">
+            <aside className="sf-card p-6 flex flex-col min-h-[520px] border border-charcoal/60 bg-surface/70">
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-ink rounded-2xl flex items-center justify-center border border-charcoal/60">
@@ -213,28 +221,23 @@ export default function AccountSettings() {
                     </div>
                   </div>
                 </div>
-                <p className="text-sm text-vanilla/70">
-                  Manage your profile details and keep your login current.
-                </p>
-                <p className="text-xs text-vanilla/60">Profile status: {profileStatusLabel}</p>
-              </div>
-
-              <div className="space-y-3 mt-6">
-                {navButtons.map((button) =>
-                  button.active ? (
-                    <span
-                      key={`nav-${button.label}`}
-                      className={navButtonClasses(true)}
-                      aria-current="page"
-                    >
-                      {button.label}
-                    </span>
-                  ) : (
-                    <Link key={`nav-${button.label}`} to={button.to!} className={navButtonClasses(false)}>
-                      {button.label}
-                    </Link>
-                  )
-                )}
+                <div className="space-y-3 pt-2">
+                  {navButtons.map((button) =>
+                    button.active ? (
+                      <span
+                        key={`nav-${button.label}`}
+                        className={navButtonClasses(true)}
+                        aria-current="page"
+                      >
+                        {button.label}
+                      </span>
+                    ) : (
+                      <Link key={`nav-${button.label}`} to={button.to!} className={navButtonClasses(false)}>
+                        {button.label}
+                      </Link>
+                    )
+                  )}
+                </div>
               </div>
             </aside>
 

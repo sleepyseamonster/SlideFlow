@@ -31,7 +31,7 @@ function base64UrlDecode(input: string) {
       bytes[i] = binary.charCodeAt(i);
     }
     return bytes;
-  } catch (_err) {
+  } catch {
     return null;
   }
 }
@@ -94,7 +94,7 @@ async function debugMetaToken(userAccessToken: string, metaAppId: string, metaAp
       hasInstagramBasic: scopes.includes("instagram_basic"),
       hasInstagramPublish: scopes.includes("instagram_content_publish"),
     };
-  } catch (_err) {
+  } catch {
     return null;
   }
 }
@@ -106,7 +106,7 @@ function normalizeReturnBase(value: string) {
       return null;
     }
     return url.origin;
-  } catch (_err) {
+  } catch {
     return null;
   }
 }
@@ -144,7 +144,7 @@ async function parseState(rawState: string, secret: string) {
     const normalizedReturnBase = normalizeReturnBase(payload.return_base);
     if (!normalizedReturnBase) return null;
     return { userId: payload.user_id, returnBase: normalizedReturnBase };
-  } catch (_err) {
+  } catch {
     return null;
   }
 }

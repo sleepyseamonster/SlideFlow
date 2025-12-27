@@ -52,7 +52,7 @@ function normalizeReturnBase(value: string) {
       return null;
     }
     return url.origin;
-  } catch (_err) {
+  } catch {
     return null;
   }
 }

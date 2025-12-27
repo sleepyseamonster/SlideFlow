@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,16 +14,8 @@ const PLAN_USAGE_HINT: Record<PlanKey, string> = {
 
 export default function Plans() {
   const { user, updateUser } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey>(user?.plan || 'free');
-
-  const planMap = useMemo(
-    () => Object.fromEntries(PLAN_OPTIONS.map((plan) => [plan.key, plan] as const)),
-    []
-  );
-  const userPlan = user ? planMap[user.plan] ?? PLAN_OPTIONS[0] : PLAN_OPTIONS[0];
 
   const handleSelectPlan = (planKey: PlanKey) => {
-    setSelectedPlan(planKey);
     updateUser({
       plan: planKey,
       maxCarousels: PLAN_MAX_CAROUSELS[planKey],

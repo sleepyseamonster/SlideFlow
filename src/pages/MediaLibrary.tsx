@@ -21,6 +21,8 @@ import {
 export default function MediaLibrary() {
   const {
     images,
+    studioImages,
+    studioAvailable,
     captions,
     prompts,
     addUploadedFiles,
@@ -33,6 +35,7 @@ export default function MediaLibrary() {
     saveCaption,
     savePrompt,
     refreshLibrary,
+    refreshStudioLibrary,
   } = useMediaLibrary();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -44,7 +47,7 @@ export default function MediaLibrary() {
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ id: string; url: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'images' | 'captions' | 'prompts'>('images');
+  const [activeTab, setActiveTab] = useState<'images' | 'studio' | 'captions' | 'prompts'>('images');
   const [editingTextItem, setEditingTextItem] = useState<{
     type: 'caption' | 'prompt';
     mode: 'create' | 'edit';
@@ -75,10 +78,11 @@ export default function MediaLibrary() {
   };
   const storageTierKey = user ? planStorageTier[user.plan] : 'free';
   const storageTier = STORAGE_TIERS[storageTierKey];
-  const usedBytes = images.reduce(
-    (sum, image) => sum + (image.source === 'supabase' ? image.size : 0),
-    0
+  const allSupabaseImages = [...images, ...studioImages].filter((image) => image.source === 'supabase');
+  const uniqueSupabaseImages = Array.from(
+    new Map(allSupabaseImages.map((image) => [image.id, image])).values()
   );
+  const usedBytes = uniqueSupabaseImages.reduce((sum, image) => sum + image.size, 0);
   const isOverLimit = usedBytes > storageTier.totalBytes;
 
   const uploadOne = async (userId: string, file: File) => {
@@ -160,7 +164,9 @@ export default function MediaLibrary() {
     }
   };
 
-  const filteredImages = images.filter(image =>
+  const currentImageList = activeTab === 'studio' ? studioImages : images;
+
+  const filteredImages = currentImageList.filter(image =>
     image.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -279,7 +285,7 @@ export default function MediaLibrary() {
       const ids = Array.from(selectedImages);
       await Promise.all(ids.map((imageId) => removeImage(imageId)));
       setSelectedImages(new Set());
-      await refreshLibrary();
+      await Promise.all([refreshLibrary(), refreshStudioLibrary()]);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Delete failed. Please try again.';
       console.error('Bulk delete failed:', err);
@@ -471,14 +477,15 @@ export default function MediaLibrary() {
   }, [activeTab]);
 
   const previewRecord = previewImage
-    ? images.find((image) => image.id === previewImage.id)
+    ? [...images, ...studioImages].find((image) => image.id === previewImage.id)
     : null;
   const previewName = previewRecord?.name || 'Image preview';
   const tabCards = [
-    { key: 'images', label: 'Images', count: images.length, helper: 'Library' },
-    { key: 'captions', label: 'Captions', count: captions.length, helper: 'Saved' },
-    { key: 'prompts', label: 'Prompts', count: prompts.length, helper: 'Saved' },
-  ] as const;
+    { key: 'images' as const, label: 'Images', count: images.length, helper: 'Library' },
+    { key: 'studio' as const, label: 'Studio', count: studioImages.length, helper: studioAvailable ? 'Auto-saved' : 'Unavailable' },
+    { key: 'captions' as const, label: 'Captions', count: captions.length, helper: 'Saved' },
+    { key: 'prompts' as const, label: 'Prompts', count: prompts.length, helper: 'Saved' },
+  ];
   const editingLimit = editingTextItem?.type === 'caption' ? 2200 : 1000;
   const selectedTextCount =
     activeTab === 'captions'
@@ -486,6 +493,8 @@ export default function MediaLibrary() {
       : activeTab === 'prompts'
       ? selectedPromptIds.size
       : 0;
+  const isImageTab = activeTab === 'images' || activeTab === 'studio';
+  const imageTabLabel = activeTab === 'studio' ? 'Studio images' : 'images';
 
   return (
     <div className="min-h-screen bg-ink">
@@ -568,6 +577,8 @@ export default function MediaLibrary() {
                     placeholder={
                       activeTab === 'images'
                         ? 'Search images...'
+                        : activeTab === 'studio'
+                        ? 'Search studio images...'
                         : activeTab === 'captions'
                         ? 'Search captions...'
                         : 'Search prompts...'
@@ -578,17 +589,19 @@ export default function MediaLibrary() {
                   />
                 </div>
               </div>
-              {activeTab === 'images' ? (
+              {isImageTab ? (
                 <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className={`inline-flex items-center px-4 py-2 font-medium rounded-lg transition-colors ${uploading ? 'bg-pacific/60 cursor-not-allowed text-white' : 'bg-pacific hover:bg-pacific-deep text-white'}`}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {uploading ? 'Uploading…' : 'Upload Images'}
-                  </button>
-                  {images.length > 0 && (
+                  {activeTab === 'images' && (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className={`inline-flex items-center px-4 py-2 font-medium rounded-lg transition-colors ${uploading ? 'bg-pacific/60 cursor-not-allowed text-white' : 'bg-pacific hover:bg-pacific-deep text-white'}`}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {uploading ? 'Uploading…' : 'Upload Images'}
+                    </button>
+                  )}
+                  {currentImageList.length > 0 && (
                     <button
                       onClick={() => {
                         if (selectedImages.size === filteredImages.length) {
@@ -636,6 +649,11 @@ export default function MediaLibrary() {
                       <List className="h-4 w-4" />
                     </button>
                   </div>
+                  {activeTab === 'studio' && (
+                    <span className="text-xs text-vanilla/60">
+                      Studio outputs auto-save from AI tools.
+                    </span>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center space-x-3">
@@ -696,7 +714,7 @@ export default function MediaLibrary() {
           </div>
 
           {/* Content */}
-          {activeTab === 'images' ? (
+          {isImageTab ? (
             filteredImages.length === 0 ? (
               <div className="text-center py-12">
                 <div className="max-w-sm mx-auto">
@@ -704,15 +722,23 @@ export default function MediaLibrary() {
                     <ImageIcon className="h-8 w-8 text-vanilla/55" />
                   </div>
                   <h3 className="text-lg font-medium text-vanilla mb-2">
-                    {images.length === 0 ? 'No images uploaded' : 'No images match your search'}
+                    {currentImageList.length === 0
+                      ? activeTab === 'studio'
+                        ? 'No studio images yet'
+                        : 'No images uploaded'
+                      : `No ${imageTabLabel} match your search`}
                   </h3>
                   <p className="text-vanilla/70 mb-6">
-                    {images.length === 0
-                      ? 'Upload images to build your media library'
+                    {currentImageList.length === 0
+                      ? activeTab === 'studio'
+                        ? studioAvailable
+                          ? 'Edits and generations from Studio auto-save here.'
+                          : 'Studio tab is unavailable until the migration runs. New outputs save to the Images tab.'
+                        : 'Upload images to build your media library'
                       : 'Try adjusting your search terms'
                     }
                   </p>
-                  {images.length === 0 && (
+                  {currentImageList.length === 0 && activeTab === 'images' && (
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}

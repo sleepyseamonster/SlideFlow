@@ -502,7 +502,6 @@ export default function GenerateCaption() {
     window.setTimeout(() => setCaptionSaved(false), 1500);
   };
 
-  const totalSlides = orderedSlides.length || navDrafts.length || 0;
   const slidesReady = !slidesUploading && !loading && orderedSlides.length > 0;
   const canReview = slidesReady;
   const goToPublish = () => {

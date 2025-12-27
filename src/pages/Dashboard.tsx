@@ -722,19 +722,19 @@ export default function Dashboard() {
                     onClick={prevWeek}
                     className="p-2 rounded-lg bg-surface hover:bg-surface-alt text-vanilla/80 hover:text-vanilla transition-colors"
                     aria-label="Previous week"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <div>
-                    <p className="text-[11px] tracking-[0.3em] uppercase text-vanilla/50">Schedule</p>
-                    <h3 className="text-lg font-semibold text-vanilla">Weekly view</h3>
-                  </div>
-                  <button
-                    onClick={nextWeek}
-                    className="p-2 rounded-lg bg-surface hover:bg-surface-alt text-vanilla/80 hover:text-vanilla transition-colors"
-                    aria-label="Next week"
-                  >
-                    <ChevronRight className="h-4 w-4" />
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <div>
+                      <p className="text-[11px] tracking-[0.3em] uppercase text-vanilla/50">Schedule</p>
+                      <h3 className="text-lg font-semibold text-vanilla">Weekly view</h3>
+                    </div>
+                    <button
+                      onClick={nextWeek}
+                      className="p-2 rounded-lg bg-surface hover:bg-surface-alt text-vanilla/80 hover:text-vanilla transition-colors"
+                      aria-label="Next week"
+                    >
+                      <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
                 <span className="text-xs text-vanilla/60">{weekRangeLabel}</span>
@@ -754,24 +754,24 @@ export default function Dashboard() {
                           dragOverDayId === day.id
                             ? 'border-pacific bg-pacific/20 scale-105'
                             : day.isToday
-                            ? 'border-pacific bg-pacific/10 text-white'
-                            : 'border-charcoal/50 bg-surface text-vanilla/80'
+                                ? 'border-pacific bg-pacific/10 text-white'
+                                : 'border-charcoal/50 bg-surface text-vanilla/80'
                         } flex flex-col items-center justify-center font-semibold text-lg`}
                       >
                         <span>{day.date}</span>
                         {day.scheduledCarousels.length > 0 && (
                           <div className="absolute bottom-1 flex gap-0.5">
                             {day.scheduledCarousels.slice(0, 3).map((_, idx) => (
-                              <div
-                                key={idx}
-                                className="w-1.5 h-1.5 rounded-full bg-pacific"
-                                title={`${day.scheduledCarousels.length} scheduled`}
-                              />
-                            ))}
-                          </div>
-                        )}
+                                <div
+                                  key={idx}
+                                  className="w-1.5 h-1.5 rounded-full bg-pacific"
+                                  title={`${day.scheduledCarousels.length} scheduled`}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
                   ))}
                 </div>
               </div>

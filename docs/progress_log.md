@@ -240,6 +240,9 @@
 - Studio AI Image Edit: added `supabase/functions/nano-banana-edit` wired to `fal-ai/nano-banana-pro/edit` (uses server-side `FAL_KEY`).
 - SlideBoard: rehydrate saved slides on return from Generate to avoid stale blob URLs and prevent broken thumbnails during reordering.
 - Brand Profile: persist selected preset on account via `is_default` and reuse it across sessions (Studio falls back to the default preset when present).
+- Billing: “View plans & pricing” button now routes directly to `/plans` from the billing summary.
+- Account Settings: added a top-of-page “Back to Dashboard” link for quick return to the main hub.
+- Billing cleanup: removed unused plan-selection helpers and state to clear lint noise.
 
 ## 2025-12-27
 - Investigated the recurring `brand_profile.is_default` column errors on the Brand Profile and SlideFlow Studio pages, traced the 400 response to the missing migration, and documented the detection strategy that will make the fetch/save logic schema-aware.

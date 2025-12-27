@@ -472,7 +472,6 @@ export default function Publish() {
     setPublishing(true);
     setPublishError(null);
     let responseErrorCode: string | null = null;
-    let retryAfterSeconds: number | null = null;
 
     const slides = orderedSlides.map((slide, index) => ({
       id: slide.id,
@@ -534,7 +533,6 @@ export default function Publish() {
       if (error) {
         const parsed = await parseFunctionError(error);
         responseErrorCode = parsed.code ?? null;
-        retryAfterSeconds = parsed.retryAfterSeconds;
         if (parsed.message) {
           const structured = new Error(
             responseErrorCode ? `${parsed.message} (${responseErrorCode})` : parsed.message

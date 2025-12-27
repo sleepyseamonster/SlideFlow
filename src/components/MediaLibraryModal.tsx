@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Search, Image as ImageIcon } from 'lucide-react';
 import { useMediaLibrary, type LibraryImage, type LibraryTextItem } from '../contexts/MediaLibraryContext';
 
-export type MediaLibraryTab = 'images' | 'captions' | 'prompts';
+export type MediaLibraryTab = 'images' | 'studio' | 'captions' | 'prompts';
 
 interface MediaLibraryModalProps {
   isOpen: boolean;
@@ -27,7 +27,7 @@ export default function MediaLibraryModal({
   onSelectCaption,
   onSelectPrompt,
 }: MediaLibraryModalProps) {
-  const { images, captions, prompts } = useMediaLibrary();
+  const { images, studioImages, captions, prompts, studioAvailable } = useMediaLibrary();
   const [activeTab, setActiveTab] = useState<MediaLibraryTab>(initialTab);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -51,12 +51,14 @@ export default function MediaLibraryModal({
   if (!isOpen) return null;
 
   const tabCards = [
-    { key: 'images', label: 'Images', count: images.length },
-    { key: 'captions', label: 'Captions', count: captions.length },
-    { key: 'prompts', label: 'Prompts', count: prompts.length },
-  ] as const;
+    { key: 'images' as const, label: 'Images', count: images.length },
+    { key: 'studio' as const, label: 'Studio', count: studioImages.length },
+    { key: 'captions' as const, label: 'Captions', count: captions.length },
+    { key: 'prompts' as const, label: 'Prompts', count: prompts.length },
+  ];
 
-  const filteredImages = images.filter((image) =>
+  const activeImages = activeTab === 'studio' ? (studioAvailable ? studioImages : []) : images;
+  const filteredImages = activeImages.filter((image) =>
     image.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
   const filteredCaptions = captions.filter((item) =>
@@ -65,6 +67,7 @@ export default function MediaLibraryModal({
   const filteredPrompts = prompts.filter((item) =>
     item.text.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const isImageTab = activeTab === 'images' || activeTab === 'studio';
 
   const handleSelectText = (type: 'caption' | 'prompt', item: LibraryTextItem) => {
     if (type === 'caption') {
@@ -136,6 +139,8 @@ export default function MediaLibraryModal({
                 placeholder={
                   activeTab === 'images'
                     ? 'Search images...'
+                    : activeTab === 'studio'
+                    ? 'Search studio images...'
                     : activeTab === 'captions'
                     ? 'Search captions...'
                     : 'Search prompts...'
@@ -145,21 +150,27 @@ export default function MediaLibraryModal({
                 className="pl-10 pr-4 py-2 border border-charcoal/50 rounded-lg bg-surface focus:ring-2 focus:ring-pacific focus:border-pacific w-64"
               />
             </div>
-            {activeTab === 'images' && onSelectImage && (
+            {isImageTab && onSelectImage && (
               <span className="text-xs text-vanilla/60">Click an image to insert.</span>
             )}
-            {activeTab !== 'images' && (
+            {!isImageTab && (
               <span className="text-xs text-vanilla/60">Click a card to insert.</span>
             )}
           </div>
 
           <div className="max-h-[55vh] overflow-y-auto pr-1">
-            {activeTab === 'images' ? (
+            {isImageTab ? (
               filteredImages.length === 0 ? (
                 <div className="text-center py-10">
                   <ImageIcon className="h-12 w-12 text-vanilla/50 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-vanilla mb-2">No images found</h3>
-                  <p className="text-vanilla/70">Upload images on the Media Library page.</p>
+                  <h3 className="text-lg font-medium text-vanilla mb-2">
+                    {activeTab === 'studio' ? 'No studio images yet' : 'No images found'}
+                  </h3>
+                  <p className="text-vanilla/70">
+                    {activeTab === 'studio'
+                      ? 'Run Studio tools to see your auto-saved outputs here.'
+                      : 'Upload images on the Media Library page.'}
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

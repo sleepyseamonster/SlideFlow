@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMediaLibrary, type LibraryImage } from '../contexts/MediaLibraryContext';
 import { X, Check, Image as ImageIcon } from 'lucide-react';
 
@@ -17,11 +17,17 @@ export default function ImportLibraryModal({
   maxImages = 10,
   currentImageCount = 0
 }: ImportLibraryModalProps) {
-  const { images } = useMediaLibrary();
+  const { images, studioImages, studioAvailable } = useMediaLibrary();
+  const [imageSource, setImageSource] = useState<'library' | 'studio'>('library');
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
 
   const availableSlots = maxImages - currentImageCount;
+  const imageList = imageSource === 'studio' ? (studioAvailable ? studioImages : []) : images;
+
+  useEffect(() => {
+    setSelectedImages(new Set());
+  }, [imageSource]);
 
   if (!isOpen) return null;
 
@@ -38,7 +44,7 @@ export default function ImportLibraryModal({
   const handleImport = async () => {
     setImporting(true);
     try {
-      const selectedLibraryImages = images.filter(img => selectedImages.has(img.id));
+      const selectedLibraryImages = imageList.filter((img) => selectedImages.has(img.id));
       onImport(selectedLibraryImages);
       setSelectedImages(new Set());
       onClose();
@@ -69,15 +75,52 @@ export default function ImportLibraryModal({
         </div>
 
         <div className="p-6 overflow-y-auto max-h-96">
-          {images.length === 0 ? (
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setImageSource('library')}
+              className={`px-3 py-1.5 rounded-md border text-sm font-semibold transition-colors ${
+                imageSource === 'library'
+                  ? 'bg-pacific text-white border-pacific/70'
+                  : 'bg-surface text-vanilla/70 border-charcoal/50 hover:bg-surface-alt'
+              }`}
+            >
+              Library
+            </button>
+            <button
+              type="button"
+              onClick={() => setImageSource('studio')}
+              disabled={!studioAvailable}
+              className={`px-3 py-1.5 rounded-md border text-sm font-semibold transition-colors ${
+                imageSource === 'studio'
+                  ? 'bg-pacific text-white border-pacific/70'
+                  : 'bg-surface text-vanilla/70 border-charcoal/50 hover:bg-surface-alt'
+              } ${!studioAvailable ? 'opacity-60 cursor-not-allowed' : ''}`}
+            >
+              Studio
+            </button>
+          </div>
+          {imageList.length === 0 ? (
             <div className="text-center py-12">
               <ImageIcon className="h-12 w-12 text-vanilla/50 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-vanilla mb-2">No images in library</h3>
-              <p className="text-vanilla/70">Upload some images to your media library first.</p>
+              <h3 className="text-lg font-medium text-vanilla mb-2">
+                {imageSource === 'studio'
+                  ? studioAvailable
+                    ? 'No studio images yet'
+                    : 'Studio tab unavailable'
+                  : 'No images in library'}
+              </h3>
+              <p className="text-vanilla/70">
+                {imageSource === 'studio'
+                  ? studioAvailable
+                    ? 'Use Studio tools to generate or edit images and they will appear here.'
+                    : 'Run the latest migration to enable studio auto-save. New outputs are saved to Images for now.'
+                  : 'Upload some images to your media library first.'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {images.map((image) => {
+              {imageList.map((image) => {
                 const isSelected = selectedImages.has(image.id);
                 const canSelect = selectedImages.size < availableSlots;
                 const isDisabled = !isSelected && !canSelect;

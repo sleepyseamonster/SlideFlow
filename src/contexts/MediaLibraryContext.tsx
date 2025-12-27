@@ -12,6 +12,7 @@ export interface LibraryImage {
   path?: string;
   bucket?: string;
   source: 'local' | 'supabase';
+  collection?: 'library' | 'studio';
 }
 
 export interface LibraryTextItem {
@@ -30,6 +31,7 @@ export interface UploadedFileInfo {
   size_bytes?: number;
   created_at?: string;
   is_library?: boolean;
+  is_studio?: boolean;
 }
 
 const parseOriginalName = (file: UploadedFileInfo) => {
@@ -47,11 +49,14 @@ const resolveDisplayName = (file: UploadedFileInfo) => {
 
 interface MediaLibraryContextType {
   images: LibraryImage[];
+  studioImages: LibraryImage[];
   captions: LibraryTextItem[];
   prompts: LibraryTextItem[];
+  studioAvailable: boolean;
   addImages: (files: File[]) => void;
   addUploadedFiles: (uploaded: UploadedFileInfo[]) => Promise<void>;
   refreshLibrary: () => Promise<void>;
+  refreshStudioLibrary: () => Promise<void>;
   refreshCaptions: () => Promise<void>;
   refreshPrompts: () => Promise<void>;
   removeImage: (id: string) => Promise<void>;
@@ -64,6 +69,7 @@ interface MediaLibraryContextType {
   removePrompt: (id: string) => Promise<boolean>;
   clearLibrary: () => void;
   loading: boolean;
+  loadingStudio: boolean;
   loadingCaptions: boolean;
   loadingPrompts: boolean;
 }
@@ -84,7 +90,10 @@ interface MediaLibraryProviderProps {
 
 export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
   const [images, setImages] = useState<LibraryImage[]>([]);
+  const [studioImages, setStudioImages] = useState<LibraryImage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingStudio, setLoadingStudio] = useState(false);
+  const [studioAvailable, setStudioAvailable] = useState(true);
   const [captions, setCaptions] = useState<LibraryTextItem[]>([]);
   const [prompts, setPrompts] = useState<LibraryTextItem[]>([]);
   const [loadingCaptions, setLoadingCaptions] = useState(false);
@@ -105,31 +114,66 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
     return session.data.session;
   };
 
-  // Fetch all user files from Supabase storage (user/date/file structure).
-  const refreshLibrary = async () => {
+  const mapMediaRowsToImages = (
+    mediaRows: Array<{
+      id?: string;
+      bucket?: string | null;
+      path: string;
+      filename?: string | null;
+      display_name?: string | null;
+      mime_type?: string | null;
+      size_bytes?: number | null;
+      created_at?: string | null;
+    }>,
+    signedUrls: Array<{ signedUrl: string } | null | undefined>,
+    collection: 'library' | 'studio'
+  ): LibraryImage[] =>
+    mediaRows.map((file, idx) => ({
+      id: file.path,
+      url: signedUrls?.[idx]?.signedUrl || '',
+      name: resolveDisplayName(file),
+      uploadedAt: file.created_at || new Date().toISOString(),
+      size: file.size_bytes || 0,
+      path: file.path,
+      bucket: file.bucket || 'media',
+      source: 'supabase',
+      collection,
+    }));
+
+  // Fetch all user files from Supabase storage for a given collection.
+  const refreshMediaCollection = async (
+    flag: 'is_library' | 'is_studio',
+    setter: React.Dispatch<React.SetStateAction<LibraryImage[]>>,
+    collection: 'library' | 'studio',
+    setLoadingState: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    if (flag === 'is_studio' && !studioAvailable) {
+      setter([]);
+      return;
+    }
     if (!user) {
-      setImages([]);
+      setter([]);
       return;
     }
 
     const session = await supabase.auth.getSession();
     if (!session.data.session) {
-      setImages([]);
+      setter([]);
       return;
     }
 
-    setLoading(true);
+    setLoadingState(true);
     try {
-      // Pull only library media rows for this user.
       const { data: mediaRows, error: mediaError } = await supabase
         .from('media')
         .select('id, bucket, path, filename, display_name, mime_type, size_bytes, created_at')
-        .eq('is_library', true)
+        .eq(flag, true)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (mediaError) throw mediaError;
 
       if (!mediaRows || mediaRows.length === 0) {
-        setImages(prev => prev.filter(img => img.source === 'local'));
+        setter((prev) => (collection === 'library' ? prev.filter((img) => img.source === 'local') : []));
         return;
       }
 
@@ -140,27 +184,34 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
       );
       if (signedError) throw signedError;
 
-      const newImages: LibraryImage[] = mediaRows.map((file, idx) => ({
-        id: file.path,
-        url: signedUrls?.[idx]?.signedUrl || '',
-        name: resolveDisplayName(file),
-        uploadedAt: file.created_at || new Date().toISOString(),
-        size: file.size_bytes || 0,
-        path: file.path,
-        bucket: file.bucket,
-        source: 'supabase'
-      }));
+      const newImages = mapMediaRowsToImages(mediaRows, signedUrls ?? [], collection);
 
-      setImages((prev) => {
-        const locals = prev.filter(img => img.source === 'local');
-        return [...locals, ...newImages];
+      setter((prev) => {
+        const locals = collection === 'library' ? prev.filter((img) => img.source === 'local') : [];
+        return collection === 'library' ? [...locals, ...newImages] : newImages;
       });
     } catch (error) {
-      console.error('Failed to refresh media library:', error);
+      const typedError = error as { code?: string; message?: string };
+      const message: string = typeof typedError?.message === 'string' ? typedError.message : '';
+      if (flag === 'is_studio') {
+        const missingColumn =
+          typedError?.code === '42703' || message.toLowerCase().includes('is_studio');
+        if (missingColumn) {
+          console.warn('Studio media column missing; disabling studio tab until migration is applied.');
+          setStudioAvailable(false);
+          setter([]);
+          setLoadingState(false);
+          return;
+        }
+      }
+      console.error(`Failed to refresh ${collection} media library:`, error);
     } finally {
-      setLoading(false);
+      setLoadingState(false);
     }
   };
+
+  const refreshLibrary = async () => refreshMediaCollection('is_library', setImages, 'library', setLoading);
+  const refreshStudioLibrary = async () => refreshMediaCollection('is_studio', setStudioImages, 'studio', setLoadingStudio);
 
   const refreshCaptions = async () => {
     if (!user) {
@@ -232,6 +283,7 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
 
   useEffect(() => {
     refreshLibrary();
+    refreshStudioLibrary();
     refreshCaptions();
     refreshPrompts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,7 +298,8 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
       name: file.name,
       uploadedAt: new Date().toISOString(),
       size: file.size,
-      source: 'local'
+      source: 'local',
+      collection: 'library'
     }));
 
     setImages(prev => [...newImages, ...prev]);
@@ -255,22 +308,23 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
   // Add files that were uploaded to Supabase (expects bucket/path info).
   const addUploadedFiles = async (uploaded: UploadedFileInfo[]) => {
     if (!uploaded.length) return;
-    // Only accept items that are explicitly flagged as library assets
     const libraryOnly = uploaded.filter((f) => f.is_library);
-    if (!libraryOnly.length) return;
+    const studioOnly = uploaded.filter((f) => f.is_studio);
+    if (!libraryOnly.length && !studioOnly.length) return;
 
     const session = await supabase.auth.getSession();
     if (!session.data.session) return;
 
     const storage = supabase.storage.from('media');
-    try {
+    const addUploadsForCollection = async (items: UploadedFileInfo[], collection: 'library' | 'studio') => {
+      if (!items.length) return;
       const { data: signedUrls, error } = await storage.createSignedUrls(
-        libraryOnly.map((f) => f.path),
+        items.map((f) => f.path),
         60 * 60
       );
       if (error) throw error;
 
-      const newImages: LibraryImage[] = libraryOnly.map((file, idx) => ({
+      const mapped: LibraryImage[] = items.map((file, idx) => ({
         id: file.path,
         url: signedUrls?.[idx]?.signedUrl || '',
         name: resolveDisplayName(file),
@@ -278,30 +332,38 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
         size: file.size_bytes || 0,
         path: file.path,
         bucket: file.bucket,
-        source: 'supabase'
+        source: 'supabase',
+        collection,
       }));
 
-      setImages(prev => {
-        const existing = new Set(prev.map(img => img.id));
+      const setter = collection === 'library' ? setImages : setStudioImages;
+      setter((prev) => {
+        const existing = new Set(prev.map((img) => img.id));
         const merged = [...prev];
-        newImages.forEach(img => {
+        mapped.forEach((img) => {
           if (!existing.has(img.id)) merged.push(img);
         });
         return merged;
       });
+    };
+
+    try {
+      await addUploadsForCollection(libraryOnly, 'library');
+      await addUploadsForCollection(studioOnly, 'studio');
     } catch (error) {
       console.error('Failed to add uploaded files to library:', error);
     }
   };
 
   const removeImage = async (id: string) => {
-    const imageToRemove = images.find((img) => img.id === id);
+    const imageToRemove = images.find((img) => img.id === id) ?? studioImages.find((img) => img.id === id);
     if (!imageToRemove) return;
 
     // Revoke local previews immediately.
     if (imageToRemove.source === 'local') {
       URL.revokeObjectURL(imageToRemove.url);
       setImages((prev) => prev.filter((img) => img.id !== id));
+      setStudioImages((prev) => prev.filter((img) => img.id !== id));
       return;
     }
 
@@ -309,6 +371,7 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
     const bucket = imageToRemove.bucket || 'media';
     if (!path) {
       setImages((prev) => prev.filter((img) => img.id !== id));
+      setStudioImages((prev) => prev.filter((img) => img.id !== id));
       return;
     }
 
@@ -340,6 +403,7 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
       console.error('Failed to remove image from storage/table:', err);
     } finally {
       setImages((prev) => prev.filter((img) => img.id !== id));
+      setStudioImages((prev) => prev.filter((img) => img.id !== id));
     }
   };
 
@@ -347,21 +411,21 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
     const nextName = newName.trim();
     if (!nextName) return false;
 
-    const imageToRename = images.find((img) => img.id === id);
+    const imageToRename = images.find((img) => img.id === id) ?? studioImages.find((img) => img.id === id);
     if (!imageToRename) return false;
+    const updateStates = (updater: (img: LibraryImage) => LibraryImage) => {
+      setImages((prev) => prev.map((img) => (img.id === id ? updater(img) : img)));
+      setStudioImages((prev) => prev.map((img) => (img.id === id ? updater(img) : img)));
+    };
 
     if (imageToRename.source === 'local') {
-      setImages((prev) =>
-        prev.map((img) => (img.id === id ? { ...img, name: nextName } : img))
-      );
+      updateStates((img) => ({ ...img, name: nextName }));
       return true;
     }
 
     const path = imageToRename.path;
     if (!path) {
-      setImages((prev) =>
-        prev.map((img) => (img.id === id ? { ...img, name: nextName } : img))
-      );
+      updateStates((img) => ({ ...img, name: nextName }));
       return true;
     }
 
@@ -387,9 +451,7 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
         .eq('user_id', user?.id || '');
       if (error) throw error;
 
-      setImages((prev) =>
-        prev.map((img) => (img.id === id ? { ...img, name: nextName } : img))
-      );
+      updateStates((img) => ({ ...img, name: nextName }));
       return true;
     } catch (err) {
       console.error('Failed to rename image:', err);
@@ -552,21 +614,30 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
   };
 
   const clearLibrary = () => {
-    images.forEach(image => {
-      if (image.source === 'local') {
-        URL.revokeObjectURL(image.url);
-      }
-    });
+    const revokeLocalUrls = (items: LibraryImage[]) => {
+      items.forEach((image) => {
+        if (image.source === 'local') {
+          URL.revokeObjectURL(image.url);
+        }
+      });
+    };
+
+    revokeLocalUrls(images);
+    revokeLocalUrls(studioImages);
     setImages(images.filter(img => img.source === 'supabase'));
+    setStudioImages(studioImages.filter((img) => img.source === 'supabase'));
   };
 
   const value = {
     images,
+    studioImages,
     captions,
     prompts,
+    studioAvailable,
     addImages,
     addUploadedFiles,
     refreshLibrary,
+    refreshStudioLibrary,
     refreshCaptions,
     refreshPrompts,
     removeImage,
@@ -579,6 +650,7 @@ export function MediaLibraryProvider({ children }: MediaLibraryProviderProps) {
     removePrompt,
     clearLibrary,
     loading,
+    loadingStudio,
     loadingCaptions,
     loadingPrompts
   };

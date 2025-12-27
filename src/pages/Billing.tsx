@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../contexts/AuthContext';
@@ -35,15 +35,13 @@ function getCycleDayLabel(renewalAt?: string | null) {
 }
 
 export default function Billing() {
-  const { user, updateUser } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey>(user?.plan || 'free');
+  const { user } = useAuth();
 
   const planMap = useMemo(
     () => Object.fromEntries(PLAN_OPTIONS.map((plan) => [plan.key, plan] as const)),
     []
   );
-  const currentPlan = planMap[selectedPlan] ?? PLAN_OPTIONS[0];
-  const userPlan = user ? planMap[user.plan] ?? currentPlan : currentPlan;
+  const userPlan = user ? planMap[user.plan] ?? PLAN_OPTIONS[0] : PLAN_OPTIONS[0];
   const creditsBalance = user?.creditsBalance ?? 0;
   const creditsBuckets = user?.creditsBuckets;
   const renewalLabel = formatRenewal(user?.creditsRenewalAt);
@@ -58,28 +56,8 @@ export default function Billing() {
     : isLowCredits
       ? 'Running low—add a pack or adjust usage.'
       : 'On track this cycle.';
-  const primaryActionLabel = isLowCredits ? 'Add extra credits' : 'View plans & pricing';
-  const primaryActionTarget = isLowCredits ? 'credit-packs' : 'plans-link';
   const carouselLimitLabel =
     PLAN_MAX_CAROUSELS[user.plan] >= 999 ? 'Unlimited' : PLAN_MAX_CAROUSELS[user.plan];
-
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
-  const handleSelectPlan = (planKey: PlanKey) => {
-    setSelectedPlan(planKey);
-    updateUser({
-      plan: planKey,
-      maxCarousels: PLAN_MAX_CAROUSELS[planKey],
-    });
-    if (planKey !== 'free') {
-      alert('We will confirm payment details before any charges. Checkout opens soon.');
-    }
-  };
 
   if (!user) return null;
 
@@ -134,13 +112,12 @@ export default function Billing() {
                   <p className="text-3xl font-bold">{userPlan.price}</p>
                   <p className="text-sm text-vanilla/70">{userPlan.cadence}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection(primaryActionTarget)}
+                <Link
+                  to="/plans"
                   className="sf-btn-secondary px-4 py-2 text-sm justify-center"
                 >
-                  {primaryActionLabel}
-                </button>
+                  View plans & pricing
+                </Link>
               </div>
             </div>
           </section>
