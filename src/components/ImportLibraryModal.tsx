@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useMediaLibrary, type LibraryImage } from '../contexts/MediaLibraryContext';
+import { useMediaLibrary } from '../contexts/useMediaLibrary';
+import type { LibraryImage } from '../contexts/media-library-context';
 import { X, Check, Image as ImageIcon } from 'lucide-react';
 
 interface ImportLibraryModalProps {

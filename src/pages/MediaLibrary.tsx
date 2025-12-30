@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMediaLibrary, type LibraryImage, type LibraryTextItem } from '../contexts/MediaLibraryContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useMediaLibrary } from '../contexts/useMediaLibrary';
+import type { LibraryImage, LibraryTextItem } from '../contexts/media-library-context';
+import { useAuth } from '../contexts/useAuth';
 import { supabase } from '../lib/supabase';
 import { type PlanKey } from '../lib/plans';
 import Navbar from '../components/Navbar';
@@ -516,7 +517,7 @@ export default function MediaLibrary() {
       <Navbar />
       
       <main className="pt-20 pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           {/* Header */}
           <div className="mb-8">
             <Link 

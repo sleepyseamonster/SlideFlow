@@ -1,51 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { normalizePlan, PLAN_MAX_CAROUSELS, type PlanKey } from '../lib/plans';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  plan: PlanKey;
-  carouselsGenerated: number;
-  maxCarousels: number;
-  creditsBalance?: number;
-  creditsBuckets?: {
-    subscription?: number;
-    purchased?: number;
-    bonus?: number;
-  };
-  creditsRenewalAt?: string | null;
-  instagramConnected: boolean;
-  instagramBusinessAccountId?: string;
-  instagramUsername?: string;
-  connectedAccountId?: string;
-  facebookPageId?: string;
-  facebookPageName?: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  loginWithFacebook: () => Promise<boolean>;
-  connectInstagram: () => Promise<{ ok: boolean; error?: string }>;
-  signup: (email: string, password: string, name: string) => Promise<boolean>;
-  logout: () => void;
-  loading: boolean;
-  updateUser: (updates: Partial<User>) => void;
-  refreshUser: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
+import { AuthContext, type AuthContextType, type User } from './auth-context';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -266,7 +223,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     login,
     loginWithFacebook,

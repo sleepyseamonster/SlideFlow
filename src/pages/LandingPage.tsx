@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createCheckoutSession } from '../lib/stripe';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import Navbar from '../components/Navbar';
 import CircularGalleryDemo from '../components/CircularGalleryDemo';
 import { SparklesText } from '../components/ui/sparkles-text';
@@ -147,7 +147,7 @@ export default function LandingPage() {
           <div className="absolute -left-10 top-0 h-72 w-72 bg-pacific/25 blur-[120px]"></div>
           <div className="absolute right-0 top-10 h-80 w-80 bg-slate/25 blur-[120px]"></div>
         </div>
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative sf-wide-shell">
           <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-10 items-center">
             <div className="space-y-7 relative">
               <div className="flex items-start gap-4">
@@ -227,7 +227,7 @@ export default function LandingPage() {
 
       {/* Value Proposition */}
       <section className="py-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           <div className="sf-card p-8 flex flex-col md:flex-row gap-8 items-start">
             <div className="flex-1 space-y-4">
               <div className="space-y-2">
@@ -263,7 +263,7 @@ export default function LandingPage() {
 
       {/* How it works */}
       <section id="how-it-works" className="py-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           <div className="text-center mb-10">
             <SparklesText 
               text="How SlideFlow works" 
@@ -292,7 +292,7 @@ export default function LandingPage() {
 
       {/* Examples */}
       <section id="examples" className="py-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           <div className="text-center mb-10">
             <SparklesText 
               text="Example Carousels" 
@@ -308,7 +308,7 @@ export default function LandingPage() {
 
       {/* Social proof / reassurance */}
       <section className="py-16">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           <div className="sf-card p-8 space-y-3 text-center">
             <h3 className="text-2xl font-bold">Creators and content managers stay consistent without design tools.</h3>
             <p className="text-lg text-vanilla/80 max-w-3xl mx-auto">“We went from posting one carousel every other week to three per week without hiring a designer or opening Canva.”</p>
@@ -319,7 +319,7 @@ export default function LandingPage() {
 
       {/* Pricing */}
       <section className="py-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           <div className="text-center mb-12">
             <SparklesText 
               text="Pricing that scales with your AI needs." 
@@ -421,7 +421,7 @@ export default function LandingPage() {
 
       {/* Objections / FAQ */}
       <section className="py-12">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           <div className="grid md:grid-cols-3 gap-4">
             {objections.map((item) => (
               <div key={item.q} className="sf-card p-5 space-y-2">
@@ -437,7 +437,7 @@ export default function LandingPage() {
 
       {/* Final CTA */}
       <section className="py-12">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           <div className="sf-card p-8 text-center space-y-4">
             <h3 className="text-3xl font-bold">Start creating carousels the easy way.</h3>
             <p className="text-lg text-vanilla/70 max-w-3xl mx-auto">Upload your images, organize the slides, generate captions, and post directly to Instagram. No design software or image editing required.</p>
@@ -455,7 +455,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="bg-surface py-12 mt-6 border-t border-charcoal/50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           <div className="flex flex-col items-center text-center gap-3">
             <div className="flex items-center justify-center space-x-2 mb-2">
               <img 

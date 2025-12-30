@@ -3,8 +3,9 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Instagram, ChevronLeft, ChevronRight, CheckCircle2, Clock3, Check, Sparkles, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import PageDots from '../components/PageDots';
-import { useCarousel, type Carousel } from '../contexts/CarouselContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useCarousel } from '../contexts/useCarousel';
+import { useAuth } from '../contexts/useAuth';
+import type { Carousel } from '../contexts/carousel-context';
 import { supabase } from '../lib/supabase';
 
 type AspectRatio = '4:5' | '1:1';
@@ -158,7 +159,7 @@ export default function Publish() {
   React.useEffect(() => {
     if (!publishError) return;
     setPublishError(null);
-  }, [selectedConnectedAccountId, shareToInstagram, shareToFacebook]);
+  }, [publishError, selectedConnectedAccountId, shareToInstagram, shareToFacebook]);
 
   // Persist caption changes (debounced) so dashboard reflects saved caption.
   React.useEffect(() => {
@@ -175,7 +176,7 @@ export default function Publish() {
     return () => {
       window.clearTimeout(handle);
     };
-  }, [caption, currentCarousel?.id, setCurrentCarousel, updateCarousel]);
+  }, [caption, currentCarousel?.id, currentCarousel?.caption, setCurrentCarousel, updateCarousel]);
 
   // Use any preloaded carousel from navigation state.
   React.useEffect(() => {
@@ -216,7 +217,7 @@ export default function Publish() {
     return () => {
       cancelled = true;
     };
-  }, [carouselId, fetchCarousel, navCarousel, setCurrentCarousel]);
+  }, [carouselId, fetchCarousel, navCarousel, setCurrentCarousel, setOrderedSlides]);
 
   // Hydrate slide URLs if needed.
   React.useEffect(() => {
@@ -654,7 +655,7 @@ export default function Publish() {
       <Navbar />
 
       <main className="pt-20 pb-24">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="sf-wide-shell space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <Link
               to={`/generate-caption/${carouselId || currentCarousel.id}`}

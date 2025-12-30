@@ -1,58 +1,13 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { useAuth } from './AuthContext';
-import { fetchUserCarousels, fetchCarouselWithSlides, deleteCarousel as dbDeleteCarousel, duplicateCarouselDeep } from '../lib/database';
+import React, { useState, ReactNode, useCallback } from 'react';
+import { useAuth } from './useAuth';
+import {
+  fetchUserCarousels,
+  fetchCarouselWithSlides,
+  deleteCarousel as dbDeleteCarousel,
+  duplicateCarouselDeep,
+} from '../lib/database';
 import { supabase } from '../lib/supabase';
-
-export interface CarouselSlide {
-  id: string;
-  image: string;
-  caption: string;
-  design?: 'minimalist' | 'bold' | 'elegant';
-  position?: number;
-  originalMedia?: Record<string, unknown> | null;
-  derivatives?: Array<Record<string, unknown>>;
-}
-
-export interface Carousel {
-  id: string;
-  title: string;
-  caption: string;
-  description?: string;
-  slides: CarouselSlide[];
-  createdAt: string;
-  style: 'minimalist' | 'bold' | 'elegant';
-  status?: string;
-  scheduled_at?: string | null;
-  posting_status?: 'draft' | 'scheduled' | 'posted' | 'failed';
-  publish_started_at?: string | null;
-  publish_completed_at?: string | null;
-  publish_error?: string | null;
-}
-
-interface CarouselContextType {
-  carousels: Carousel[];
-  currentCarousel: Carousel | null;
-  loading: boolean;
-  setCurrentCarousel: (carousel: Carousel | null) => void;
-  addCarousel: (carousel: Carousel) => void;
-  deleteCarousel: (id: string) => void;
-  duplicateCarousel: (id: string) => void;
-  duplicateCarouselDeep: (id: string) => Promise<Carousel | null>;
-  refreshCarousels: () => Promise<void>;
-  fetchCarousel: (id: string) => Promise<Carousel | null>;
-  updateCarousel: (id: string, updates: { title?: string; caption?: string | null; status?: string }) => Promise<Carousel | null>;
-  scheduleCarousel: (id: string, date: Date) => Promise<void>;
-}
-
-const CarouselContext = createContext<CarouselContextType | undefined>(undefined);
-
-export function useCarousel() {
-  const context = useContext(CarouselContext);
-  if (context === undefined) {
-    throw new Error('useCarousel must be used within a CarouselProvider');
-  }
-  return context;
-}
+import { CarouselContext, type CarouselContextType } from './carousel-context';
 
 interface CarouselProviderProps {
   children: ReactNode;
@@ -380,7 +335,7 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
     return null;
   };
 
-  const value = {
+  const value: CarouselContextType = {
     carousels,
     currentCarousel,
     loading,
@@ -392,7 +347,7 @@ export function CarouselProvider({ children }: CarouselProviderProps) {
     refreshCarousels,
     fetchCarousel,
     updateCarousel,
-    scheduleCarousel
+    scheduleCarousel,
   };
 
   return <CarouselContext.Provider value={value}>{children}</CarouselContext.Provider>;

@@ -5,8 +5,6 @@ import PageDots from '../components/PageDots';
 import MediaLibraryModal, { type MediaLibraryTab } from '../components/MediaLibraryModal';
 import { supabase } from '../lib/supabase';
 import { DEFAULT_PRIMARY_FONT_ID, getFont, getFontOptions } from '../lib/fonts';
-import { useAuth } from '../contexts/AuthContext';
-import { useMediaLibrary, type LibraryImage } from '../contexts/MediaLibraryContext';
 import {
   AlignCenter,
   AlignLeft,
@@ -29,7 +27,10 @@ import {
   Upload,
   Wand2,
 } from 'lucide-react';
-import { type Carousel } from '../contexts/CarouselContext';
+import { useAuth } from '../contexts/useAuth';
+import { useMediaLibrary } from '../contexts/useMediaLibrary';
+import type { LibraryImage } from '../contexts/media-library-context';
+import type { Carousel } from '../contexts/carousel-context';
 import { DEFAULT_STORAGE_KEY_PREFIX, EXPORT_SIZES, HISTORY_LIMIT, TOTAL_APP_PAGES } from './studio/constants';
 import type {
   BackgroundStyleKey,
@@ -255,7 +256,7 @@ export default function SlideFlowStudio() {
     if (history.stack.length) return;
     setHistory({ stack: [captureEditState()], index: 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [bgReplaceRef?.previewUrl, bgReplaceRef?.revokeOnCleanup]);
 
   useEffect(() => {
     if (!history.stack.length) return;
@@ -365,20 +366,23 @@ export default function SlideFlowStudio() {
   const getNextStudioLabel = () => `Slide ${carouselSlides.length + localSlides.length + 1}`;
 
   useEffect(() => {
+    const objectUrlsSnapshot = [...createdObjectUrls.current];
+    const overlayUrlsSnapshot = [...createdOverlayUrls.current];
     return () => {
-      createdObjectUrls.current.forEach((url) => URL.revokeObjectURL(url));
-      createdOverlayUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      objectUrlsSnapshot.forEach((url) => URL.revokeObjectURL(url));
+      overlayUrlsSnapshot.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, []);
+  }, [bgReplaceRef?.previewUrl, bgReplaceRef?.revokeOnCleanup]);
 
   useEffect(() => {
+    const previewUrl = bgReplaceRef?.previewUrl;
+    const revokeOnCleanup = Boolean(bgReplaceRef?.revokeOnCleanup);
     return () => {
-      if (bgReplaceRef?.previewUrl && bgReplaceRef.revokeOnCleanup) {
-        URL.revokeObjectURL(bgReplaceRef.previewUrl);
+      if (previewUrl && revokeOnCleanup) {
+        URL.revokeObjectURL(previewUrl);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [bgReplaceRef?.previewUrl, bgReplaceRef?.revokeOnCleanup]);
 
   const getCropKey = (slideId: string) => `${slideId}:${selectedAspect}`;
 
@@ -1437,7 +1441,14 @@ export default function SlideFlowStudio() {
     const selected = selectedTextLayerBySlide[activeSlide.id] ?? '';
     if (selected) return;
     setSelectedTextLayerBySlide((prev) => ({ ...prev, [activeSlide.id]: layers[0]!.id }));
-  }, [activeTool, activeSlide?.id, activeTextLayers.length, activeSelectedTextLayerId]);
+  }, [
+    activeTool,
+    activeSlide,
+    activeTextLayers.length,
+    activeSelectedTextLayerId,
+    textLayersBySlide,
+    selectedTextLayerBySlide,
+  ]);
 
   useEffect(() => {
     if (activeTool !== 'image-overlay') return;
@@ -1447,7 +1458,14 @@ export default function SlideFlowStudio() {
     const selected = selectedImageOverlayBySlide[activeSlide.id] ?? '';
     if (selected) return;
     setSelectedImageOverlayBySlide((prev) => ({ ...prev, [activeSlide.id]: layers[0]!.id }));
-  }, [activeTool, activeSlide?.id, activeImageOverlays.length, activeSelectedImageOverlayId]);
+  }, [
+    activeTool,
+    activeSlide,
+    activeImageOverlays.length,
+    activeSelectedImageOverlayId,
+    imageOverlaysBySlide,
+    selectedImageOverlayBySlide,
+  ]);
 
   useEffect(() => {
     const rgb = hexToRgb(activeTextColor);
@@ -2278,7 +2296,7 @@ export default function SlideFlowStudio() {
         onChange={handleImageOverlayInputChange}
       />
       <main className="pt-24 pb-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
             <Link
               to={backLink.to}

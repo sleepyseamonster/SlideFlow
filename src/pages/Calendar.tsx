@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { Clock3, GripVertical, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import PageDots from '../components/PageDots';
-import { useCarousel } from '../contexts/CarouselContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useCarousel } from '../contexts/useCarousel';
+import { useAuth } from '../contexts/useAuth';
 import { supabase } from '../lib/supabase';
 
 type ScheduledEntry = {
@@ -515,7 +515,7 @@ export default function CalendarPage() {
     <div className="min-h-screen bg-ink text-vanilla">
       <Navbar />
       <main className="pt-20 pb-12">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 space-y-4">
+        <div className="sf-wide-shell space-y-4">
           <div className="flex flex-wrap items-start justify-start gap-4">
             <div className="space-y-2">
               <Link

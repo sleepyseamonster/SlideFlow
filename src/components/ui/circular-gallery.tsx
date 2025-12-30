@@ -56,7 +56,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
           clearTimeout(scrollTimeoutRef.current);
         }
       };
-    }, []);
+    }, [reverseScrollDirection]);
 
     // Effect for auto-rotation when not scrolling
     useEffect(() => {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { User, LogOut, Sparkles } from 'lucide-react';
 
 interface NavbarProps {
@@ -21,7 +21,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
           : 'bg-surface/80 backdrop-blur-xl border-b border-charcoal/40 shadow-soft'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="sf-wide-shell">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">

@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { useCarousel, type Carousel } from '../contexts/CarouselContext';
-import { useMediaLibrary } from '../contexts/MediaLibraryContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useCarousel } from '../contexts/useCarousel';
+import { useMediaLibrary } from '../contexts/useMediaLibrary';
+import { useAuth } from '../contexts/useAuth';
 import { supabase } from '../lib/supabase';
+import type { Carousel } from '../contexts/carousel-context';
 import Navbar from '../components/Navbar';
 import PageDots from '../components/PageDots';
+import { ASPECT_OPTIONS, type AspectRatio } from '../constants/generate-caption';
 import {
   ChevronLeft,
   ChevronRight,
@@ -21,11 +23,6 @@ const TOTAL_APP_PAGES = 5;
 const MAX_PREVIEW_SLOTS = 10;
 const PROMPT_MAX_LENGTH = 1000;
 const CAPTION_MAX_LENGTH = 2200;
-export const ASPECT_OPTIONS = [
-  { value: '4:5' as const, label: '4:5 Portrait', helper: '(Recommended)' },
-  { value: '1:1' as const, label: '1:1 Square', helper: 'Consistent across previews' },
-];
-export type AspectRatio = (typeof ASPECT_OPTIONS)[number]['value'];
 
 type SlideDraft =
   | { kind: 'file'; index: number; file: File }
@@ -140,7 +137,7 @@ export default function GenerateCaption() {
   const navState = location.state as { carousel?: Carousel; caption?: string; slideDrafts?: SlideDraft[]; aspectRatio?: AspectRatio } | null;
   const navCarousel = navState?.carousel;
   const navCaption = navState?.caption;
-  const navDrafts = navState?.slideDrafts ?? [];
+  const navDrafts = useMemo(() => navState?.slideDrafts ?? [], [navState?.slideDrafts]);
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [manualCaption, setManualCaption] = useState('');
@@ -237,8 +234,7 @@ export default function GenerateCaption() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [carouselId, user?.id]);
+  }, [carouselId, user?.id, navDrafts]);
 
   // Ensure each slide has a fresh signed URL; only hydrate once per load unless data looks incomplete.
   React.useEffect(() => {
@@ -286,7 +282,7 @@ export default function GenerateCaption() {
     return () => {
       cancelled = true;
     };
-  }, [currentCarousel, hydrated, setCurrentCarousel]);
+  }, [currentCarousel, hydrated, setCurrentCarousel, slidesUploading]);
 
   React.useEffect(() => {
     if (currentCarousel) {
@@ -525,7 +521,7 @@ export default function GenerateCaption() {
       <Navbar />
       
       <main className="pt-20 pb-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="sf-wide-shell space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <Link 
               to="/slideboard" 

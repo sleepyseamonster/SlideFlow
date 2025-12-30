@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Search, Image as ImageIcon } from 'lucide-react';
-import { useMediaLibrary, type LibraryImage, type LibraryTextItem } from '../contexts/MediaLibraryContext';
+import { useMediaLibrary } from '../contexts/useMediaLibrary';
+import type { LibraryImage, LibraryTextItem } from '../contexts/media-library-context';
 
 export type MediaLibraryTab = 'images' | 'studio' | 'captions' | 'prompts';
 

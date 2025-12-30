@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/useAuth';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
@@ -16,6 +17,8 @@ import Plans from './pages/Plans';
 import MediaLibrary from './pages/MediaLibrary';
 import BrandProfile from './pages/BrandProfile';
 import SlideFlowStudio from './pages/SlideFlowStudio';
+import OnboardingCourses from './pages/OnboardingCourses';
+import WorkflowLessons from './pages/WorkflowLessons';
 import { CarouselProvider } from './contexts/CarouselContext';
 import { MediaLibraryProvider } from './contexts/MediaLibraryContext';
 
@@ -115,6 +118,16 @@ function App() {
                 <Route path="/media-library" element={
                   <ProtectedRoute>
                     <MediaLibrary />
+                  </ProtectedRoute>
+                } />
+                <Route path="/onboarding-courses" element={
+                  <ProtectedRoute>
+                    <OnboardingCourses />
+                  </ProtectedRoute>
+                } />
+                <Route path="/workflow-lessons" element={
+                  <ProtectedRoute>
+                    <WorkflowLessons />
                   </ProtectedRoute>
                 } />
               </Routes>

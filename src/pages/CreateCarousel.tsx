@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from "@/lib/supabase";
 import { n8nPost } from "@/lib/n8n";
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { 
@@ -149,7 +149,7 @@ export default function CreateCarousel() {
       <Navbar />
       
       <main className="pt-20 pb-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sf-wide-shell">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-vanilla mb-4">Create Your Carousel</h1>
             <p className="text-vanilla/70">Upload images and describe your message to generate a professional carousel</p>

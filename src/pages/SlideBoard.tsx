@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { type UploadedFileInfo, type LibraryImage } from '../contexts/MediaLibraryContext';
-import { useCarousel, type Carousel } from '../contexts/CarouselContext';
+import { useCarousel } from '../contexts/useCarousel';
+import type { Carousel } from '../contexts/carousel-context';
 import ImportLibraryModal from '../components/ImportLibraryModal';
 import Navbar from '../components/Navbar';
 import PageDots from '../components/PageDots';
@@ -39,6 +40,15 @@ type SlideDraft =
   | { kind: 'file'; index: number; file: File }
   | { kind: 'existing'; index: number; bucket: string; path: string };
 
+const isBlobUrl = (url?: string) =>
+  typeof url === 'string' && (url.startsWith('blob:') || url.startsWith('data:'));
+
+const hasRemoteSlides = (carousel?: Carousel | null) =>
+  Boolean(carousel?.slides?.some((slide) => typeof slide.image === 'string' && slide.image.startsWith('http')));
+
+const hasBlobSlides = (carousel?: Carousel | null) =>
+  Boolean(carousel?.slides?.some((slide) => isBlobUrl(slide.image)));
+
 export default function SlideBoard() {
   const [slotFiles, setSlotFiles] = useState<Array<File | undefined>>(Array(MAX_FILES).fill(undefined));
   const [previews, setPreviews] = useState<Array<string | undefined>>(Array(MAX_FILES).fill(undefined));
@@ -57,15 +67,6 @@ export default function SlideBoard() {
   const navCarousel = navState?.carousel;
   const [hydratedCarousel, setHydratedCarousel] = useState<Carousel | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-
-  const isBlobUrl = (url?: string) =>
-    typeof url === 'string' && (url.startsWith('blob:') || url.startsWith('data:'));
-
-  const hasRemoteSlides = (carousel?: Carousel | null) =>
-    Boolean(carousel?.slides?.some((slide) => typeof slide.image === 'string' && slide.image.startsWith('http')));
-
-  const hasBlobSlides = (carousel?: Carousel | null) =>
-    Boolean(carousel?.slides?.some((slide) => isBlobUrl(slide.image)));
 
   const revokePreview = (url?: string) => {
     if (url && url.startsWith('blob:')) {
@@ -382,7 +383,7 @@ export default function SlideBoard() {
     return () => {
       cancelled = true;
     };
-  }, [currentCarousel, navCarousel, fetchCarousel, setCurrentCarousel]);
+  }, [currentCarousel, navCarousel, fetchCarousel, setCurrentCarousel, setHydratedCarousel]);
 
   React.useEffect(() => {
     const source =
@@ -504,8 +505,7 @@ export default function SlideBoard() {
           if (!e.target.files?.length) return;
           // Reuse the bulk upload handler so the dropzone click
           // behaves like drag-dropping multiple files.
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          handleImageUpload(e as unknown as React.ChangeEvent<HTMLInputElement>);
+          void handleImageUpload(e as unknown as React.ChangeEvent<HTMLInputElement>);
           e.target.value = '';
         }}
       />
@@ -518,7 +518,7 @@ export default function SlideBoard() {
       />
       
       <main className="pt-24 pb-24">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
+        <div className="sf-wide-shell space-y-5">
 
           <div className="grid gap-5">
             {/* Main column */}

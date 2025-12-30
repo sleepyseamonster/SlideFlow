@@ -1,17 +1,16 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useCarousel, type Carousel, type CarouselSlide } from '../contexts/CarouselContext';
+import { useAuth } from '../contexts/useAuth';
+import { useCarousel } from '../contexts/useCarousel';
+import type { Carousel, CarouselSlide } from '../contexts/carousel-context';
 import { supabase } from '../lib/supabase';
-import { PLAN_LABELS, PLAN_OPTIONS } from '../lib/plans';
-import Navbar from '../components/Navbar';
+import { PLAN_LABELS } from '../lib/plans';
 import { 
   Plus, 
   Copy, 
   Trash2, 
   CalendarDays,
   Grid3X3,
-  Star,
   Clock,
   CheckCircle,
   CalendarCheck,
@@ -19,6 +18,10 @@ import {
   FolderOpen,
   Palette,
   Sparkles,
+  ShieldCheck,
+  Zap,
+  UploadCloud,
+  Activity,
   ChevronLeft,
   ChevronRight,
   Instagram,
@@ -53,15 +56,14 @@ export default function Dashboard() {
   });
   const [draggedCarouselId, setDraggedCarouselId] = React.useState<string | null>(null);
   const [dragOverDayId, setDragOverDayId] = React.useState<string | null>(null);
+  const [showCalendar, setShowCalendar] = React.useState(true);
   const calendarRef = React.useRef<HTMLElement>(null);
 
   const canGenerate = user && user.carouselsGenerated < user.maxCarousels;
   const planKey = user?.plan ?? 'free';
   const planLabel = PLAN_LABELS[planKey] ?? 'Free';
-  const isPaidPlan = planKey !== 'free';
-  const planTextClass = isPaidPlan ? 'text-pacific' : 'text-vanilla';
+  const planTextClass = planKey === 'creator' || planKey === 'studio' ? 'text-pacific' : 'text-vanilla';
   const creditsBalance = user?.creditsBalance ?? 0;
-  const planCredits = PLAN_OPTIONS.find((p) => p.key === planKey)?.monthlyCredits ?? 0;
 
   const calendarDays = React.useMemo(() => {
     const now = new Date();
@@ -427,9 +429,8 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-ink">
-        <Navbar />
         <main className="pt-24 pb-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="sf-wide-shell">
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tropical"></div>
             </div>
@@ -445,8 +446,8 @@ export default function Dashboard() {
   const createButtonOverlayText = creatingCarousel ? 'Creating…' : null;
   const dashboardActionBtn =
     'sf-btn-secondary inline-flex items-center gap-2 justify-center min-w-[180px] px-4 py-4 h-[60px] text-base md:text-lg font-semibold transition-all';
-  const statsGridClass = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8';
-  const statCardBase = 'sf-card bg-surface-alt/90 border border-charcoal/40';
+  const statsGridClass = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4';
+  const statCardBase = 'rounded-[20px] border border-charcoal/60 bg-ink';
   const statCardClass = `${statCardBase} px-3 py-2.5`;
   const statRowClass = 'flex items-center gap-3';
   const statLabelClass = 'text-[11px] text-vanilla/70';
@@ -486,6 +487,13 @@ export default function Dashboard() {
       iconClass: 'bg-pacific/15 text-pacific',
     },
     {
+      key: 'streak',
+      label: 'Longest Streak',
+      value: '7 days',
+      icon: Activity,
+      iconClass: 'bg-pacific/15 text-pacific',
+    },
+    {
       key: 'time-saved',
       label: 'Time Saved',
       value: `${timeSavedHours}h`,
@@ -494,131 +502,149 @@ export default function Dashboard() {
     },
   ] as const;
 
+  const displayName = user?.name?.trim() || user?.email?.split('@')[0] || 'Account';
+  const avatarInitials = displayName.slice(0, 2).toUpperCase();
+
   return (
     <div className="min-h-screen bg-ink">
-      <Navbar />
-      
-      <main className="pt-24 pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header + Connected + Plan */}
-          {/* Header + Command cards */}
-          <div className="mb-8 space-y-3">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
-              <div>
-                <h1 className="text-3xl font-bold text-vanilla">
-                  Hello,&nbsp;
-                  <span className="text-pacific">{user?.name}</span>
-                </h1>
-                <p className="text-vanilla/70 mt-2">
-                  Create and manage your Instagram carousel posts
-                </p>
+      <main className="pt-8 pb-12">
+        <div className="sf-wide-shell">
+          <div className="mb-6 rounded-[20px] border border-charcoal/60 bg-[#1d1d1c] px-5 py-4 shadow-soft">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <img src="/logo.png" alt="SlideFlow" className="h-10 w-auto" />
               </div>
-              <div className="flex flex-col md:flex-row gap-3 justify-end items-stretch">
-                <Link
-                  to="/account-settings#meta-connections"
-                  className={`${statCardBase} relative overflow-hidden p-3 text-left transition-transform hover:-translate-y-0.5 hover:border-pacific/70 hover:ring-1 hover:ring-pacific/30 flex-[1.2] min-w-[360px] max-w-[640px]`}
-                >
-                  <div className="absolute inset-0"></div>
-                  <div className="relative space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <h2 className="text-[11px] uppercase tracking-[0.2em] text-vanilla/60 whitespace-nowrap">
-                        Connected Accounts
-                      </h2>
-                      {hasDefaultMeta && (
-                        <span className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.3em] rounded-full bg-emerald-400/20 border border-emerald-400/80 text-emerald-300 whitespace-nowrap">
-                          Connected
-                        </span>
+              <div className="flex items-center justify-end gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-[20px] border border-charcoal/60 bg-ink px-5 py-4 shadow-soft min-w-[150px] flex items-center gap-3 h-[80px]">
+                    <UploadCloud className="h-5 w-5 text-pacific" />
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-vanilla/60">Media</p>
+                      <p className="text-base font-semibold text-vanilla">0 / 1 GB</p>
+                    </div>
+                  </div>
+                  <div className="rounded-[20px] border border-charcoal/60 bg-ink px-4 shadow-soft min-w-[150px] flex items-center gap-3 h-[80px]">
+                    <Sparkles className="h-5 w-5 text-pacific" />
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-vanilla/60">AI Credits</p>
+                      <p className="text-base font-semibold text-vanilla">{creditsBalance.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-[20px] border border-charcoal/60 bg-ink px-4 shadow-soft min-w-[150px] flex items-center gap-3 h-[80px]">
+                    <ShieldCheck className="h-5 w-5 text-pacific" />
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-vanilla/60">Plan</p>
+                      <p className={`text-base font-semibold ${planTextClass} capitalize`}>{planLabel}</p>
+                    </div>
+                  </div>
+                  <Link
+                    to="/account-settings#meta-connections"
+                    className="relative rounded-[20px] border border-charcoal/60 bg-ink px-5 py-4 pr-8 shadow-soft min-w-[240px] flex flex-col gap-1 justify-center transition-transform hover:border-pacific/70 hover:-translate-y-0.5 h-[80px]"
+                  >
+                    <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 h-6 w-6 text-emerald-300 drop-shadow-[0_0_8px_rgba(57,211,147,0.25)]" />
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-vanilla/60">Accounts</p>
+                      {hasDefaultMeta ? (
+                        <div className="space-y-0.5 text-[12px] text-vanilla">
+                          {defaultIgLabel && (
+                            <p className="flex items-center gap-1 font-semibold">
+                              <Instagram className="h-4 w-4 text-pacific" />
+                              <span className="inline-block max-w-[240px]">{defaultIgLabel}</span>
+                            </p>
+                          )}
+                          {defaultPageLabel && (
+                            <p className="flex items-center gap-1 font-semibold">
+                              <span className="h-4 w-4 rounded-sm border border-charcoal/50 flex items-center justify-center bg-ink text-[10px] text-pacific">f</span>
+                              <span className="inline-block max-w-[240px]">{defaultPageLabel}</span>
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-[12px] text-vanilla/70">Meta not connected</p>
                       )}
                     </div>
-                    {hasDefaultMeta ? (
-                      <div className="text-sm text-vanilla space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Instagram className="h-4 w-4 text-pacific shrink-0" />
-                      <p className="font-semibold text-vanilla">
-                        Instagram{' '}
-                        <span className="text-pacific font-semibold">{defaultIgLabel}</span>
-                      </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="h-4 w-4 rounded-sm border border-charcoal/50 flex items-center justify-center bg-ink shrink-0">
-                            <span className="text-[10px] text-pacific">f</span>
-                          </div>
-                          <p className="font-semibold text-vanilla">
-                            Facebook{' '}
-                            <span className="text-pacific font-semibold">{defaultPageLabel ?? '—'}</span>
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-0.5">
-                          <p className="text-base font-semibold text-vanilla/80 whitespace-nowrap">Meta not connected</p>
-                        <p className="text-sm text-vanilla/60">
-                          Connect your Instagram + Facebook in Account Settings.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={() => navigate('/billing')}
-                  className={`${statCardBase} relative p-3 text-left transition-all hover:bg-surface-alt hover:border-pacific/70 hover:ring-1 hover:ring-pacific/30 hover:-translate-y-0.5 w-full md:w-auto min-w-[220px] max-w-[360px] flex-shrink-0`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-pacific/15 text-pacific">
-                        <Star className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-[9px] uppercase tracking-[0.3em] text-vanilla/60">Plan</p>
-                        <p className={`text-lg font-semibold capitalize ${planTextClass}`}>{planLabel}</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-semibold text-pacific hover:text-vanilla underline cursor-pointer">
-                      Manage
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-center gap-3">
-                    <img
-                      src="/Credits.png"
-                      alt="AI credits"
-                      className="h-7 w-7 object-contain shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <p className="text-[10px] uppercase tracking-[0.25em] text-vanilla/60">AI Credits</p>
-                      <p className="text-sm font-semibold text-vanilla">
-                        {creditsBalance.toLocaleString()} / {planCredits.toLocaleString()}{' '}
-                        <span className="text-[10px] text-vanilla/60">monthly</span>
-                      </p>
-                    </div>
-                  </div>
-                </button>
+                  </Link>
+                </div>
+              <Link
+                to="/profile"
+                className="profile-badge-link w-[80px] h-[80px] rounded-[20px] border border-charcoal/50 bg-ink shadow-soft flex items-center justify-center"
+              >
+                <div className="h-9 w-9 rounded-full bg-pacific/15 text-pacific font-semibold flex items-center justify-center border border-pacific/40">
+                  {avatarInitials}
+                </div>
+              </Link>
               </div>
             </div>
           </div>
 
+          {/* Header intro */}
+          <div className="mb-8 welcome-stack">
+            <div className="welcome-card">
+              <img
+                src="/welcome-stripe.png"
+                alt=""
+                aria-hidden="true"
+                className="welcome-stripe"
+              />
+              <div className="welcome-card-content">
+                <h1 className="text-3xl font-bold text-vanilla">
+                  Hello,&nbsp;
+                  <span className="text-pacific">{user?.name}</span>
+                </h1>
+                <p className="welcome-card-subtitle">
+                  Your dashboard is the launch surface to manage your social media carousels.
+                  <br />
+                  <span className="welcome-card-cta">Upload. Arrange. Generate. Publish.</span>
+                </p>
+              </div>
+            </div>
+            <div className="welcome-card-actions welcome-card-actions-layer">
+              <Link to="/onboarding-courses" className="welcome-card-course-card">
+                <p className="text-[10px] tracking-[0.4em] uppercase text-vanilla/60 mb-0.5">Quick Start</p>
+                <p className="welcome-card-course-title text-xl font-semibold text-pacific mb-1">Onboarding Courses</p>
+                <p className="text-sm text-vanilla/70 mb-2">
+                  Guided walkthroughs for every step from upload to publish.
+                </p>
+                <span className="welcome-card-course-cta">
+                  Begin <span aria-hidden="true">→</span>
+                </span>
+              </Link>
+              <Link to="/workflow-lessons" className="welcome-card-course-card">
+                <p className="text-[10px] tracking-[0.4em] uppercase text-vanilla/60 mb-0.5">Workflow</p>
+                <p className="welcome-card-course-title text-xl font-semibold text-pacific mb-1">Production Lessons</p>
+                <p className="text-sm text-vanilla/70 mb-2">
+                  Studio-focused lessons on crop, overlays, and AI helpers.
+                </p>
+                <span className="welcome-card-course-cta">
+                  Explore <span aria-hidden="true">→</span>
+                </span>
+              </Link>
+            </div>
+          </div>
+
           {/* Stats */}
-          <div className={statsGridClass}>
-            {statCards.map(({ key, label, value, icon: Icon, iconClass }) => (
-              <div key={key} className={statCardClass}>
-                <div className={statRowClass}>
-                  <div className={`p-2 rounded-lg ${iconClass}`}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className={statLabelClass}>{label}</p>
-                    <p className={statValueClass}>{value}</p>
+          <div className="hidden rounded-[20px] border border-charcoal/60 bg-[#1d1d1c] p-4 mb-8">
+            <div className={statsGridClass}>
+              {statCards.map(({ key, label, value, icon: Icon, iconClass }) => (
+                <div key={key} className={statCardClass}>
+                  <div className={statRowClass}>
+                    <div className={`p-2 rounded-lg ${iconClass}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className={statLabelClass}>{label}</p>
+                      <p className={statValueClass}>{value}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-
+              ))}
+            </div>
           </div>
 
           {/* Actions */}
           <div className="mb-8">
             {canGenerate ? (
+              <div className="rounded-[20px] border border-charcoal/60 bg-[#1d1d1c] px-5 py-4 shadow-soft">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-3">
                     <Link
@@ -702,6 +728,7 @@ export default function Dashboard() {
                     />
                   </div>
                 </div>
+              </div>
             ) : (
               <div className="bg-tropical/10 border border-tropical/30 rounded-lg p-4 md:max-w-md">
                 <p className="text-vanilla font-medium">
@@ -715,73 +742,87 @@ export default function Dashboard() {
           </div>
           {/* Week overview */}
           <section ref={calendarRef} className="mb-8">
-            <div className="sf-card border border-charcoal/40 bg-surface-alt/90 p-6 shadow-soft">
-              <div className="flex items-center justify-between mb-4 gap-2">
+            <div className="sf-card border border-charcoal/40 bg-surface-alt/90 p-4 shadow-soft">
+              <div className="flex items-center justify-between mb-3 gap-2">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={prevWeek}
                     className="p-2 rounded-lg bg-surface hover:bg-surface-alt text-vanilla/80 hover:text-vanilla transition-colors"
                     aria-label="Previous week"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <div>
-                      <p className="text-[11px] tracking-[0.3em] uppercase text-vanilla/50">Schedule</p>
-                      <h3 className="text-lg font-semibold text-vanilla">Weekly view</h3>
-                    </div>
-                    <button
-                      onClick={nextWeek}
-                      className="p-2 rounded-lg bg-surface hover:bg-surface-alt text-vanilla/80 hover:text-vanilla transition-colors"
-                      aria-label="Next week"
-                    >
-                      <ChevronRight className="h-4 w-4" />
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <div>
+                    <p className="text-[11px] tracking-[0.3em] uppercase text-vanilla/50">Schedule</p>
+                    <h3 className="text-lg font-semibold text-vanilla">Weekly view</h3>
+                  </div>
+                  <button
+                    onClick={nextWeek}
+                    className="p-2 rounded-lg bg-surface hover:bg-surface-alt text-vanilla/80 hover:text-vanilla transition-colors"
+                    aria-label="Next week"
+                  >
+                    <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
-                <span className="text-xs text-vanilla/60">{weekRangeLabel}</span>
-              </div>
-              <div className="overflow-x-auto">
-                <div className="grid grid-cols-7 gap-3 text-center min-w-[460px]">
-                  {calendarDays.map((day) => (
-                    <div key={day.id} className="flex flex-col items-center gap-2">
-                      <span className="text-[11px] tracking-[0.3em] uppercase text-vanilla/50">
-                        {day.letter}
-                      </span>
-                      <div
-                        onDragOver={handleDragOver(day.id)}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop(day)}
-                        className={`w-full aspect-square rounded-lg border transition-all relative ${
-                          dragOverDayId === day.id
-                            ? 'border-pacific bg-pacific/20 scale-105'
-                            : day.isToday
-                                ? 'border-pacific bg-pacific/10 text-white'
-                                : 'border-charcoal/50 bg-surface text-vanilla/80'
-                        } flex flex-col items-center justify-center font-semibold text-lg`}
-                      >
-                        <span>{day.date}</span>
-                        {day.scheduledCarousels.length > 0 && (
-                          <div className="absolute bottom-1 flex gap-0.5">
-                            {day.scheduledCarousels.slice(0, 3).map((_, idx) => (
-                                <div
-                                  key={idx}
-                                  className="w-1.5 h-1.5 rounded-full bg-pacific"
-                                  title={`${day.scheduledCarousels.length} scheduled`}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                  ))}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowCalendar((prev) => !prev)}
+                    className="week-toggle-btn"
+                  >
+                    {showCalendar ? 'Hide schedule' : 'Show schedule'}
+                  </button>
+                  <span className="text-xs text-vanilla/60">{weekRangeLabel}</span>
                 </div>
               </div>
-              <p className="text-xs text-vanilla/50 mt-4 text-center">
-                💡 Drag any carousel from below onto a date to schedule it
-              </p>
+              {showCalendar ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <div className="grid grid-cols-7 gap-2 text-center min-w-[420px]">
+                      {calendarDays.map((day) => (
+                        <div key={day.id} className="flex flex-col items-center gap-2">
+                          <span className="text-[11px] tracking-[0.3em] uppercase text-vanilla/50">
+                            {day.letter}
+                          </span>
+                          <div
+                            onDragOver={handleDragOver(day.id)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop(day)}
+                            className={`w-full min-h-[52px] rounded-lg border transition-all relative ${
+                              dragOverDayId === day.id
+                                ? 'border-pacific bg-pacific/20 scale-105'
+                                : day.isToday
+                                    ? 'border-pacific bg-pacific/10 text-white'
+                                    : 'border-charcoal/50 bg-surface text-vanilla/80'
+                            } flex flex-col items-center justify-center font-semibold text-lg`}
+                          >
+                            <span>{day.date}</span>
+                            {day.scheduledCarousels.length > 0 && (
+                              <div className="absolute bottom-1 flex gap-0.5">
+                                {day.scheduledCarousels.slice(0, 3).map((_, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="w-1.5 h-1.5 rounded-full bg-pacific"
+                                    title={`${day.scheduledCarousels.length} scheduled`}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="week-panel-note">
+                  <strong>Calendar is still in beta.</strong> Scheduling is currently disabled; use the Dashboard flow for now.
+                </div>
+              )}
             </div>
           </section>
           {/* Carousels Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 justify-items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 justify-items-center">
           {carousels.map((carousel) => {
             const slides = previewSlides[carousel.id] || [];
             const currentIndex = activeSlideIndex[carousel.id] ?? 0;
@@ -813,7 +854,7 @@ export default function Dashboard() {
                 draggable={!isPublished}
                 onDragStart={handleDragStart(carousel.id, isPublished)}
                 onDragEnd={handleDragEnd}
-                className={`sf-card overflow-hidden transition-all text-sm w-full max-w-[14rem] group ${
+                className={`sf-card carousel-card overflow-hidden transition-all text-sm w-full max-w-[16rem] group ${
                   isDragging
                     ? 'opacity-50 cursor-grabbing scale-95'
                     : isPublished

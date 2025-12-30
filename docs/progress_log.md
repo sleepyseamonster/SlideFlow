@@ -199,6 +199,13 @@
 - Brand Profile: changed the custom font dropdown to an absolute-positioned overlay so opening it doesn’t push the card content downward.
 - Brand Profile: fixed dropdown z-order by rendering the menu in a portal with a high z-index so it always overlays other cards (e.g., Presets).
 
+## 2025-12-30
+- Dashboard UI: removed the fixed navbar on the dashboard and introduced a floating header card inside the page (logo + dashboard link + user badge). Swapped the initials badge back to the original logo on the header.
+- Dashboard spacing: tightened gutter to the sidebar and kept stats/connected-plan containers on matching dark surfaces.
+- Dashboard rounding: increased global radius tokens (sm/md/lg/xl) and card radius to 20px; updated `.sf-card` and `.sf-panel` to use the new radius vars for consistently rounder corners across dashboard cards/panels.
+- Brand Profile: fixed “applyPreset before initialization” runtime error by reordering hook declarations; page now loads correctly.
+- Lint/tooling: contexts split into hook files (`useAuth`, `useCarousel`, `useMediaLibrary`) and type contexts to satisfy fast-refresh rules; lint is clean and build passes.
+
 ## 2025-12-24
 - Studio: Add Text “Apply” now renders the current canvas, saves to Supabase as a Studio item, and appends the new slide in the filmstrip for immediate reuse. Image Overlay gains the same Apply-to-Studio flow.
 - Studio: Image Overlay tool rebuilt for multiple draggable layers—each overlay can be added via upload/drop, selected from a layer list, resized with a slider, dragged directly on the canvas, deleted, and then applied to Studio.
@@ -253,3 +260,10 @@
 ## 2025-12-27
 - Investigated the recurring `brand_profile.is_default` column errors on the Brand Profile and SlideFlow Studio pages, traced the 400 response to the missing migration, and documented the detection strategy that will make the fetch/save logic schema-aware.
 - Prepared to reinforce the known issues log with the migration info and capture the migration commands in the docs as part of the fix.
+
+## 2025-12-29
+- Dashboard header: built a unified strip with media/credits/plan/accounts/profile pills, standardized heights/rounding, switched container to `#1d1d1c`, and tuned individual card padding/backgrounds; accounts card now shows a subtle emerald check icon instead of a pill.
+- Dashboard layout: widened/sized cards uniformly, added a “Longest Streak” stat in the metrics array (grid now 6-wide) and moved Time Saved to slot six; hid the metrics container when requested.
+- Header/welcome/metrics containers: matched corner radius to 20px, raised welcome card height, and adjusted header/metrics backgrounds per design tweaks.
+- Actions row: wrapped CTA buttons in a matching container card (same color/rounding as header) while keeping existing button styles.
+- Carousel previews: enlarged tile max-width to 16rem while retaining six-per-row layout.

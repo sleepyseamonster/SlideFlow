@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
@@ -49,8 +49,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-ink flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-ink flex items-center justify-center py-12 px-6 sm:px-8 lg:px-10">
+      <div className="max-w-xl w-full space-y-8">
         <div className="text-center">
           <Link to="/" className="flex items-center justify-center space-x-2">
             <img src="/logo.png" alt="SlideFlow" className="h-12 w-auto" />

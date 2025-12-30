@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import {
   SwatchBook,
   Palette,
@@ -160,6 +160,11 @@ const styleOptions = [
 ] as const;
 
 type StyleValue = (typeof styleOptions)[number]['value'];
+
+const resolveStyleValue = (value?: string | null): StyleValue => {
+  const match = styleOptions.find((option) => option.value === value);
+  return match?.value ?? 'minimalist';
+};
 
 type HoveredStyleState = {
   value: StyleValue;
@@ -393,11 +398,6 @@ export default function BrandProfile() {
   const primaryOptions = useMemo(() => getFontOptions('primary'), []);
   const bodyOptions = useMemo(() => getFontOptions('body'), []);
 
-  const resolveStyleValue = (value?: string | null): StyleValue => {
-    const match = styleOptions.find((option) => option.value === value);
-    return match?.value ?? 'minimalist';
-  };
-
   useEffect(() => {
     if (!user) {
       setPresets([]);
@@ -451,32 +451,7 @@ export default function BrandProfile() {
     };
   }, [user]);
 
-  useEffect(() => {
-    if (!user) return;
-    if (activePresetId) return;
-    if (!presets.length) return;
-    const defaultPreset = presets.find((preset) => preset.is_default);
-    if (defaultPreset) {
-      applyPreset(defaultPreset, { persist: false });
-      return;
-    }
-    const stored = safeGetStorage(`${DEFAULT_STORAGE_KEY_PREFIX}${user.id}`);
-    if (!stored) return;
-    const match = presets.find((preset) => preset.id === stored);
-    if (match) {
-      applyPreset(match, { persist: false });
-    }
-  }, [activePresetId, presets, user]);
-
-  useEffect(() => {
-    return () => {
-      if (presetMessageTimeout.current) {
-        window.clearTimeout(presetMessageTimeout.current);
-      }
-    };
-  }, []);
-
-  const setDefaultPreset = async (presetId: string) => {
+  const setDefaultPreset = useCallback(async (presetId: string) => {
     if (!user || hasDefaultColumn === false) return;
     const { error: clearError } = await supabase
       .from('brand_profile')
@@ -496,25 +471,53 @@ export default function BrandProfile() {
       return;
     }
     setPresets((prev) => prev.map((item) => ({ ...item, is_default: item.id === presetId })));
-  };
+  }, [hasDefaultColumn, user]);
 
-  const applyPreset = (preset: BrandProfilePreset, options: { persist?: boolean } = {}) => {
-    const nextPalette = { ...defaultPalette, ...(preset.palette ?? {}) };
-    const nextFonts = preset.fonts ?? {};
-    const nextPrimary = nextFonts.primary ?? DEFAULT_PRIMARY_FONT_ID;
-    const nextBody = nextFonts.body ?? nextFonts.secondary ?? DEFAULT_BODY_FONT_ID;
-    setPalette(nextPalette);
-    setPrimaryFontId(nextPrimary);
-    setBodyFontId(nextBody);
-    setSelectedStyle(resolveStyleValue(preset.defaults?.style));
-    setActivePresetId(preset.id);
-    if (user) {
-      safeSetStorage(`${DEFAULT_STORAGE_KEY_PREFIX}${user.id}`, preset.id);
-      if (options.persist !== false) {
-        void setDefaultPreset(preset.id);
+  const applyPreset = useCallback(
+    (preset: BrandProfilePreset, options: { persist?: boolean } = {}) => {
+      const nextPalette = { ...defaultPalette, ...(preset.palette ?? {}) };
+      const nextFonts = preset.fonts ?? {};
+      const nextPrimary = nextFonts.primary ?? DEFAULT_PRIMARY_FONT_ID;
+      const nextBody = nextFonts.body ?? nextFonts.secondary ?? DEFAULT_BODY_FONT_ID;
+      setPalette(nextPalette);
+      setPrimaryFontId(nextPrimary);
+      setBodyFontId(nextBody);
+      setSelectedStyle(resolveStyleValue(preset.defaults?.style));
+      setActivePresetId(preset.id);
+      if (user) {
+        safeSetStorage(`${DEFAULT_STORAGE_KEY_PREFIX}${user.id}`, preset.id);
+        if (options.persist !== false) {
+          void setDefaultPreset(preset.id);
+        }
       }
+    },
+    [setBodyFontId, setDefaultPreset, setPalette, setPrimaryFontId, setSelectedStyle, setActivePresetId, user]
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    if (activePresetId) return;
+    if (!presets.length) return;
+    const defaultPreset = presets.find((preset) => preset.is_default);
+    if (defaultPreset) {
+      applyPreset(defaultPreset, { persist: false });
+      return;
     }
-  };
+    const stored = safeGetStorage(`${DEFAULT_STORAGE_KEY_PREFIX}${user.id}`);
+    if (!stored) return;
+    const match = presets.find((preset) => preset.id === stored);
+    if (match) {
+      applyPreset(match, { persist: false });
+    }
+  }, [activePresetId, presets, user, applyPreset]);
+
+  useEffect(() => {
+    return () => {
+      if (presetMessageTimeout.current) {
+        window.clearTimeout(presetMessageTimeout.current);
+      }
+    };
+  }, []);
 
   const handleSavePreset = async () => {
     if (!user) {
